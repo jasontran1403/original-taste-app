@@ -1,0 +1,36 @@
+name: Build Windows Release
+
+on:
+  push:
+    branches: [ main ]  # ← nếu branch của anh không phải 'main' thì sửa ở đây (ví dụ: develop, master)
+  workflow_dispatch:    # cho phép chạy thủ công từ GitHub
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.5'  # ← Quan trọng: dùng đúng version của anh
+          channel: 'stable'
+
+      - name: Clean Flutter cache
+        run: flutter clean
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: build/windows/x64/runner/Release/
+          retention-days: 7

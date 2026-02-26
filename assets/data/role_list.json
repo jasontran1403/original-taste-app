@@ -1,0 +1,58 @@
+[
+  {
+    "role": "Workspace Manager",
+    "workspace": "Facebook",
+    "tags": ["Manager", "Product"],
+    "users": ["assets/users/avatar-4.jpg", "P", "assets/users/avatar-3.jpg", "assets/users/avatar-6.jpg"],
+    "active": true
+  },
+  {
+    "role": "Product Owner",
+    "workspace": "Slack",
+    "tags": ["Manager", "Product", "Data"],
+    "users": ["assets/users/avatar-6.jpg", "assets/users/avatar-7.jpg", "+12"],
+    "active": false
+  },
+  {
+    "role": "Product Designer",
+    "workspace": "Zoom",
+    "tags": ["Designer", "Data"],
+    "users": ["assets/users/avatar-10.jpg"],
+    "active": true
+  },
+  {
+    "role": "Data Analyst",
+    "workspace": "Analytics",
+    "tags": ["Data"],
+    "users": ["assets/users/avatar-10.jpg", "assets/users/avatar-11.jpg", "assets/users/avatar-12.jpg"],
+    "active": false
+  },
+  {
+    "role": "Tech Lead",
+    "workspace": "+ Add Workspace",
+    "tags": ["Product", "Data", "Supporter"],
+    "users": "+ Add User",
+    "active": false
+  },
+  {
+    "role": "Product Manager",
+    "workspace": "Meet",
+    "tags": ["System Design"],
+    "users": ["A", "J", "K", "+17"],
+    "active": true
+  },
+  {
+    "role": "Chief Product Owner",
+    "workspace": "Mail",
+    "tags": ["Manager", "Product"],
+    "users": ["assets/users/avatar-2.jpg", "assets/users/avatar-12.jpg"],
+    "active": true
+  },
+  {
+    "role": "Support Team Head",
+    "workspace": "Strip",
+    "tags": ["QA"],
+    "users": ["K"],
+    "active": false
+  }
+]

@@ -1,0 +1,269 @@
+[
+  {
+    "id": 1,
+    "from": "Daniel J. Olsen",
+    "subject": "Direct message on Twitter",
+    "date": "11:49 am",
+    "unread": true,
+    "starred": false,
+    "important": true,
+    "attachments": [],
+    "category": "primary",
+    "labels": [
+      "updates"
+    ],
+    "content": "@Daniel J. Olsen - Very cool :) Nicklas, You have a new direct message."
+  },
+  {
+    "id": 2,
+    "from": "Jack P. Roldan",
+    "subject": "Vacation photos",
+    "date": "Feb 21",
+    "unread": false,
+    "starred": true,
+    "important": true,
+    "attachments": [
+      {
+        "type": "image",
+        "name": "IMG_201.jpg"
+      },
+      {
+        "type": "image",
+        "name": "IMG_202.jpg"
+      },
+      {
+        "type": "image",
+        "name": "IMG_203.jpg"
+      }
+    ],
+    "category": "social",
+    "labels": [
+      "social"
+    ],
+    "content": "Check out these amazing photos from our last trip!"
+  },
+  {
+    "id": 3,
+    "from": "Medium Digest",
+    "subject": "This Week's Top Stories",
+    "date": "Feb 28",
+    "unread": true,
+    "starred": false,
+    "important": false,
+    "attachments": [],
+    "category": "updates",
+    "labels": [
+      "updates"
+    ],
+    "content": "Top stories: The Man Who Destroyed America's Ego..."
+  },
+  {
+    "id": 4,
+    "from": "Death to Stock",
+    "subject": "New Assets Package",
+    "date": "Mar 1",
+    "unread": false,
+    "starred": true,
+    "important": false,
+    "attachments": [
+      {
+        "type": "pdf",
+        "name": "marketing-pack.pdf"
+      },
+      {
+        "type": "zip",
+        "name": "photos.zip"
+      }
+    ],
+    "category": "promotions",
+    "labels": [
+      "promotions"
+    ],
+    "content": "Your monthly assets package is ready for download."
+  },
+  {
+    "id": 5,
+    "from": "GitHub",
+    "subject": "Repository Activity",
+    "date": "Mar 2",
+    "unread": true,
+    "starred": false,
+    "important": true,
+    "attachments": [],
+    "category": "updates",
+    "labels": [
+      "updates"
+    ],
+    "content": "Recent activity in your watched repositories"
+  },
+  {
+    "id": 6,
+    "from": "LinkedIn",
+    "subject": "New Connection Requests",
+    "date": "Mar 3",
+    "unread": false,
+    "starred": false,
+    "important": false,
+    "attachments": [],
+    "category": "social",
+    "labels": [
+      "social"
+    ],
+    "content": "You have 5 new connection requests"
+  },
+  {
+    "id": 7,
+    "from": "Amazon AWS",
+    "subject": "Service Update",
+    "date": "Mar 4",
+    "unread": true,
+    "starred": true,
+    "important": true,
+    "attachments": [
+      {
+        "type": "doc",
+        "name": "release-notes.doc"
+      }
+    ],
+    "category": "updates",
+    "labels": [
+      "updates"
+    ],
+    "content": "Scheduled maintenance for EU-West region"
+  },
+  {
+    "id": 8,
+    "from": "Twitter",
+    "subject": "Security Alert",
+    "date": "Mar 5",
+    "unread": false,
+    "starred": false,
+    "important": true,
+    "attachments": [],
+    "category": "primary",
+    "labels": [
+      "security"
+    ],
+    "content": "New login detected from unknown device"
+  },
+  {
+    "id": 9,
+    "from": "Stripe",
+    "subject": "Payment Processed",
+    "date": "Mar 6",
+    "unread": true,
+    "starred": false,
+    "important": false,
+    "attachments": [
+      {
+        "type": "pdf",
+        "name": "invoice-0323.pdf"
+      }
+    ],
+    "category": "promotions",
+    "labels": [
+      "finance"
+    ],
+    "content": "Payment of $299.00 to WebHost Inc. was processed"
+  },
+  {
+    "id": 10,
+    "from": "Google Drive",
+    "subject": "Storage Update",
+    "date": "Mar 7",
+    "unread": false,
+    "starred": true,
+    "important": true,
+    "attachments": [],
+    "category": "updates",
+    "labels": [
+      "storage"
+    ],
+    "content": "You're using 46% of your 15GB storage"
+  },
+  {
+    "id": 11,
+    "from": "Product Hunt",
+    "subject": "New Products Today",
+    "date": "Mar 8",
+    "unread": true,
+    "starred": false,
+    "important": false,
+    "attachments": [],
+    "category": "promotions",
+    "labels": [
+      "products"
+    ],
+    "content": "Check out today's top new products!"
+  },
+  {
+    "id": 12,
+    "from": "Slack",
+    "subject": "New Message",
+    "date": "Mar 9",
+    "unread": false,
+    "starred": false,
+    "important": false,
+    "attachments": [],
+    "category": "social",
+    "labels": [
+      "team"
+    ],
+    "content": "You have unread messages in #general"
+  },
+  {
+    "id": 13,
+    "from": "PayPal",
+    "subject": "Payment Received",
+    "date": "Mar 10",
+    "unread": true,
+    "starred": true,
+    "important": true,
+    "attachments": [
+      {
+        "type": "pdf",
+        "name": "receipt.pdf"
+      }
+    ],
+    "category": "primary",
+    "labels": [
+      "finance"
+    ],
+    "content": "You received $450.00 from Client Corp"
+  },
+  {
+    "id": 14,
+    "from": "GitLab",
+    "subject": "Pipeline Failed",
+    "date": "Mar 11",
+    "unread": false,
+    "starred": false,
+    "important": true,
+    "attachments": [
+      {
+        "type": "log",
+        "name": "error.log"
+      }
+    ],
+    "category": "updates",
+    "labels": [
+      "devops"
+    ],
+    "content": "Pipeline failed for branch main"
+  },
+  {
+    "id": 15,
+    "from": "Meetup",
+    "subject": "Event Reminder",
+    "date": "Mar 12",
+    "unread": true,
+    "starred": false,
+    "important": false,
+    "attachments": [],
+    "category": "social",
+    "labels": [
+      "events"
+    ],
+    "content": "Your event 'Tech Conference 2024' is tomorrow"
+  }
+]

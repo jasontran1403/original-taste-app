@@ -1,0 +1,74 @@
+[
+  {
+    "code": "BR-3922",
+    "variant": "Brand",
+    "value": "Dyson , H&M, Nike , GoPro , Huawei , Rolex , Zara , Thenorthface",
+    "option": "Dropdown",
+    "created_on": "10 Sep 2023",
+    "published": true
+  },
+  {
+    "code": "CL-3721",
+    "variant": "Color",
+    "value": "Black , Blue , Green , Yellow , White",
+    "option": "Dropdown",
+    "created_on": "16 May 2024",
+    "published": true
+  },
+  {
+    "code": "SZ-2291",
+    "variant": "Size",
+    "value": "XS , S , M , XL , XXL , 3XL",
+    "option": "Radio",
+    "created_on": "27 Jan 2024",
+    "published": true
+  },
+  {
+    "code": "WG-9212",
+    "variant": "Weight",
+    "value": "500gm , 1kg , 2kg , 3kg , up to 4kg",
+    "option": "Radio",
+    "created_on": "12 March 2024",
+    "published": true
+  },
+  {
+    "code": "PC-1022",
+    "variant": "Packaging",
+    "value": "Paper Box , Plastic Box , Heard Box , Tin",
+    "option": "Dropdown",
+    "created_on": "02 Jan 2024",
+    "published": false
+  },
+  {
+    "code": "ML-0022",
+    "variant": "Material",
+    "value": "Cotton , Polyester , Leather , Chiffon , Denim , Linen , Satin",
+    "option": "Dropdown",
+    "created_on": "20 April 2024",
+    "published": false
+  },
+  {
+    "code": "MM-9011",
+    "variant": "Memory",
+    "value": "64 , 128 , 250 , 512 , 1TB",
+    "option": "Radio",
+    "created_on": "29 March 2024",
+    "published": true
+  },
+  {
+    "code": "SZ-2911",
+    "variant": "Shoes Size",
+    "value": "18 to 22 , 38 to 44",
+    "option": "Radio",
+    "created_on": "03 Dec 2023",
+    "published": true
+  },
+  {
+    "code": "ST-4525",
+    "variant": "Style",
+    "value": "Classic , Modern , Ethnic , Western",
+    "option": "Dropdown",
+    "created_on": "30 Jun 2024",
+    "published": false
+  }
+]

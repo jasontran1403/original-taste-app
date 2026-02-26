@@ -1,0 +1,57 @@
+[
+  {
+    "order_id": "#RB5625",
+    "date": "29 April 2024",
+    "product_image": "assets/products/product-1(1).png",
+    "customer_name": "Anna M. Hines",
+    "email": "anna.hines@mail.com",
+    "phone": "(+1)-555-1564-261",
+    "address": "Burr Ridge/Illinois",
+    "payment_type": "Credit Card",
+    "status": "Completed"
+  },
+  {
+    "order_id": "#RB9652",
+    "date": "25 April 2024",
+    "product_image": "assets/products/product-4.png",
+    "customer_name": "Judith H. Fritsche",
+    "email": "judith.fritsche.com",
+    "phone": "(+57)-305-5579-759",
+    "address": "SULLIVAN/Kentucky",
+    "payment_type": "Credit Card",
+    "status": "Completed"
+  },
+  {
+    "order_id": "#RB5984",
+    "date": "25 April 2024",
+    "product_image": "assets/products/product-5.png",
+    "customer_name": "Peter T. Smith",
+    "email": "peter.smith@mail.com",
+    "phone": "(+33)-655-5187-93",
+    "address": "Yreka/California",
+    "payment_type": "Pay Pal",
+    "status": "Completed"
+  },
+  {
+    "order_id": "#RB3625",
+    "date": "21 April 2024",
+    "product_image": "assets/products/product-6.png",
+    "customer_name": "Emmanuel J. Delcid",
+    "email": "emmanuel.delicid@mail.com",
+    "phone": "(+30)-693-5553-637",
+    "address": "Atlanta/Georgia",
+    "payment_type": "Pay Pal",
+    "status": "Processing"
+  },
+  {
+    "order_id": "#RB8652",
+    "date": "18 April 2024",
+    "product_image": "assets/products/product-1(2).png",
+    "customer_name": "William J. Cook",
+    "email": "william.cook@mail.com",
+    "phone": "(+91)-855-5446-150",
+    "address": "Rosenberg/Texas",
+    "payment_type": "Credit Card",
+    "status": "Processing"
+  }
+]

@@ -1,0 +1,66 @@
+[
+  {
+    "category": "Fashion Men , Women & Kid's",
+    "image": "assets/product/p-1.png",
+    "price": "$80 to $400",
+    "createdBy": "Seller",
+    "id": "FS16276",
+    "stock": 46233
+  },
+  {
+    "category": "Women Hand Bag",
+    "image": "assets/product/p-2.png",
+    "price": "$120 to $500",
+    "createdBy": "Admin",
+    "id": "HB73029",
+    "stock": 2739
+  },
+  {
+    "category": "Cap and Hat",
+    "image": "assets/product/p-4.png",
+    "price": "$50 to $200",
+    "createdBy": "Admin",
+    "id": "CH492-9",
+    "stock": 1829
+  },
+  {
+    "category": "Electronics Headphone",
+    "image": "assets/product/p-6.png",
+    "price": "$100 to $700",
+    "createdBy": "Seller",
+    "id": "EC23818",
+    "stock": 1902
+  },
+  {
+    "category": "Foot Wares",
+    "image": "assets/product/p-7.png",
+    "price": "$70 to $400",
+    "createdBy": "Seller",
+    "id": "FW11009",
+    "stock": 2733
+  },
+  {
+    "category": "Wallet Categories",
+    "image": "assets/product/p-8.png",
+    "price": "$120 to $300",
+    "createdBy": "Admin",
+    "id": "WL38299",
+    "stock": 890
+  },
+  {
+    "category": "Electronics Watch",
+    "image": "assets/product/p-11.png",
+    "price": "$60 to $400",
+    "createdBy": "Seller",
+    "id": "SM37817",
+    "stock": 250
+  },
+  {
+    "category": "Eye Ware & Sunglass",
+    "image": "assets/product/p-9.png",
+    "price": "$70 to $500",
+    "createdBy": "Admin",
+    "id": "EG37878",
+    "stock": 1900
+  }
+]

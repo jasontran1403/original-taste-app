@@ -1,0 +1,134 @@
+ [
+    {
+      "id": 1,
+      "image": "assets/product/p-1.png",
+      "name": "Men Black Slim Fit T-shirt",
+      "rating": 4.5,
+      "reviews": 55,
+      "original_price": 100,
+      "discounted_price": 80,
+      "discount_percentage": 30,
+      "is_favorite": false
+    },
+    {
+      "id": 2,
+      "image": "assets/product/p-2.png",
+      "name": "Olive Green Leather Bag",
+      "rating": 4.1,
+      "reviews": 143,
+      "original_price": 150,
+      "discounted_price": 136,
+      "discount_percentage": 30,
+      "is_favorite": true
+    },
+    {
+      "id": 3,
+      "image": "assets/product/p-3.png",
+      "name": "Women Golden Dress",
+      "rating": 4.4,
+      "reviews": 174,
+      "original_price": 250,
+      "discounted_price": 219,
+      "discount_percentage": 30,
+      "is_favorite": false
+    },
+    {
+      "id": 4,
+      "image": "assets/product/p-4.png",
+      "name": "Gray Cap For Men",
+      "rating": 4.2,
+      "reviews": 23,
+      "original_price": 100,
+      "discounted_price": 76,
+      "discount_percentage": 30,
+      "is_favorite": false
+    },
+    {
+      "id": 5,
+      "image": "assets/product/p-5.png",
+      "name": "Dark Green Cargo Pent",
+      "rating": 4.4,
+      "reviews": 109,
+      "original_price": 130,
+      "discounted_price": 110,
+      "discount_percentage": 30,
+      "is_favorite": false
+    },
+    {
+      "id": 6,
+      "image": "assets/product/p-6.png",
+      "name": "Orange Headphone",
+      "rating": 4.2,
+      "reviews": 200,
+      "original_price": 250,
+      "discounted_price": 231,
+      "discount_percentage": 30,
+      "is_favorite": false
+    },
+    {
+      "id": 7,
+      "image": "assets/product/p-7.png",
+      "name": "Kid's Yellow Shoes",
+      "rating": 4.5,
+      "reviews": 321,
+      "original_price": 100,
+      "discounted_price": 89,
+      "discount_percentage": 30,
+      "is_favorite": true
+    },
+    {
+      "id": 8,
+      "image": "assets/product/p-8.png",
+      "name": "Men Dark Brown Wallet",
+      "rating": 4.1,
+      "reviews": 190,
+      "original_price": 150,
+      "discounted_price": 132,
+      "discount_percentage": 30,
+      "is_favorite": false
+    },
+    {
+      "id": 9,
+      "image": "assets/product/p-9.png",
+      "name": "Sky Blue Mat Sunglass",
+      "rating": 3.5,
+      "reviews": 298,
+      "original_price": 100,
+      "discounted_price": 77,
+      "discount_percentage": 30,
+      "is_favorite": true
+    },
+    {
+      "id": 10,
+      "image": "assets/product/p-10.png",
+      "name": "Kid's Yellow T-shirt",
+      "rating": 4.1,
+      "reviews": 156,
+      "original_price": 140,
+      "discounted_price": 110,
+      "discount_percentage": 30,
+      "is_favorite": false
+    },
+    {
+      "id": 11,
+      "image": "assets/product/p-11.png",
+      "name": "White Rubber Smart Watch",
+      "rating": 3.4,
+      "reviews": 201,
+      "original_price": 110,
+      "discounted_price": 77,
+      "discount_percentage": 30,
+      "is_favorite": false
+    },
+    {
+      "id": 12,
+      "image": "assets/product/p-12.png",
+      "name": "Men Brown Leather Shoes",
+      "rating": 4.1,
+      "reviews": 370,
+      "original_price": 250,
+      "discounted_price": 222,
+      "discount_percentage": 30,
+      "is_favorite": true
+    }
+  ]

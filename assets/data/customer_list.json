@@ -1,0 +1,93 @@
+[
+  {
+    "id": "INV2540",
+    "name": "Michael A. Miner",
+    "avatar": "assets/users/avatar-2.jpg",
+    "status": "Completed",
+    "amount_paid": "$4,521",
+    "amount_due": "$8,901",
+    "date": "07 Jan, 2023",
+    "payment_method": "Mastercard"
+  },
+  {
+    "id": "INV3924",
+    "name": "Theresa T. Brose",
+    "avatar": "assets/users/avatar-3.jpg",
+    "status": "Cancel",
+    "amount_paid": "$7,836",
+    "amount_due": "$9,902",
+    "date": "03 Dec, 2023",
+    "payment_method": "Visa"
+  },
+  {
+    "id": "INV5032",
+    "name": "James L. Erickson",
+    "avatar": "assets/users/avatar-4.jpg",
+    "status": "Completed",
+    "amount_paid": "$1,347",
+    "amount_due": "$6,718",
+    "date": "28 Sep, 2023",
+    "payment_method": "Paypal"
+  },
+  {
+    "id": "INV1695",
+    "name": "Lily W. Wilson",
+    "avatar": "assets/users/avatar-5.jpg",
+    "status": "Pending",
+    "amount_paid": "$9,457",
+    "amount_due": "$3,928",
+    "date": "10 Aug, 2023",
+    "payment_method": "Mastercard"
+  },
+  {
+    "id": "INV8473",
+    "name": "Sarah M. Brooks",
+    "avatar": "assets/users/avatar-6.jpg",
+    "status": "Cancel",
+    "amount_paid": "$4,214",
+    "amount_due": "$9,814",
+    "date": "22 May, 2023",
+    "payment_method": "Visa"
+  },
+  {
+    "id": "INV2150",
+    "name": "Joe K. Hall",
+    "avatar": "assets/users/avatar-7.jpg",
+    "status": "Completed",
+    "amount_paid": "$2,513",
+    "amount_due": "$5,891",
+    "date": "15 Mar, 2023",
+    "payment_method": "Paypal"
+  },
+  {
+    "id": "INV5636",
+    "name": "Ralph Hueber",
+    "avatar": "assets/users/avatar-8.jpg",
+    "status": "Completed",
+    "amount_paid": "$3,103",
+    "amount_due": "$8,415",
+    "date": "15 Mar, 2023",
+    "payment_method": "Visa"
+  },
+  {
+    "id": "INV2940",
+    "name": "Sarah  Drescher",
+    "avatar": "assets/users/avatar-9.jpg",
+    "status": "Completed",
+    "amount_paid": "$2,416",
+    "amount_due": "$7,715",
+    "date": "15 Mar, 2023",
+    "payment_method": "Mastercard"
+  },
+  {
+    "id": "INV9027",
+    "name": "Leonie Meister",
+    "avatar": "assets/users/avatar-10.jpg",
+    "status": "Pending",
+    "amount_paid": "$1,367",
+    "amount_due": "$3,651",
+    "date": "15 Mar, 2023",
+    "payment_method": "Paypal"
+  }
+]
+  

@@ -1,0 +1,36 @@
+import 'package:original_taste/controller/my_controller.dart';
+import 'package:original_taste/models/category_list_model.dart';
+
+class CategoryListController extends MyController {
+  List<CategoryListModel> categoryList = [];
+  List<bool> selectedCheckboxes = [];
+  bool isAllSelected = false;
+  String selectedOption = 'This Month';
+
+  @override
+  void onInit() {
+    CategoryListModel.dummyList.then((value) {
+     categoryList = value;
+     selectedCheckboxes = List.generate(categoryList.length, (_) => false);
+     update();
+    });
+    super.onInit();
+  }
+
+  void toggleSelectAll(bool? value) {
+    isAllSelected = value ?? false;
+    selectedCheckboxes = List.generate(categoryList.length, (_) => isAllSelected);
+    update();
+  }
+
+  void toggleCheckbox(int index, bool? value) {
+    selectedCheckboxes[index] = value ?? false;
+    isAllSelected = !selectedCheckboxes.contains(false);
+    update();
+  }
+
+  void onSelectedOption(String time) {
+    selectedOption = time;
+    update();
+  }
+}

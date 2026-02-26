@@ -1,0 +1,112 @@
+[
+  {
+    "id": 1,
+    "warehouse_id": "#WH-001",
+    "warehouse_name": "Central Fulfillment",
+    "location": "123 Commerce St, NY",
+    "manager": "John Doe",
+    "contact_number": "+1 (555) 123-4567",
+    "stock_available": 6490,
+    "stock_shipping": 3022,
+    "warehouse_revenue": "$25,737"
+  },
+  {
+    "id": 2,
+    "warehouse_id": "#WH-002",
+    "warehouse_name": "East Coast Hub",
+    "location": "456 Market Ave, NY",
+    "manager": "Jane Smith",
+    "contact_number": "+1 (555) 234-5678",
+    "stock_available": 7362,
+    "stock_shipping": 4253,
+    "warehouse_revenue": "$67,351"
+  },
+  {
+    "id": 3,
+    "warehouse_id": "#WH-003",
+    "warehouse_name": "West Coast Depot",
+    "location": "789 Trade Blvd, CA",
+    "manager": "Richard Roe",
+    "contact_number": "+1 (555) 345-6789",
+    "stock_available": 8842,
+    "stock_shipping": 3221,
+    "warehouse_revenue": "$45,865"
+  },
+  {
+    "id": 4,
+    "warehouse_id": "#WH-004",
+    "warehouse_name": "Southern Distribution",
+    "location": "101 Supply Rd, TX",
+    "manager": "Alice Johnson",
+    "contact_number": "+1 (555) 456-7890",
+    "stock_available": 5463,
+    "stock_shipping": 2100,
+    "warehouse_revenue": "$54,655"
+  },
+  {
+    "id": 5,
+    "warehouse_id": "#WH-005",
+    "warehouse_name": "Northern Fulfillment",
+    "location": "202 Logistics Ln, IL",
+    "manager": "Michael Brown",
+    "contact_number": "+1 (555) 567-8901",
+    "stock_available": 12643,
+    "stock_shipping": 7008,
+    "warehouse_revenue": "$92,533"
+  },
+  {
+    "id": 6,
+    "warehouse_id": "#WH-006",
+    "warehouse_name": "Midwest Center",
+    "location": "303 Central St, MO",
+    "manager": "Emily Davis",
+    "contact_number": "+1 (555) 678-9012",
+    "stock_available": 7553,
+    "stock_shipping": 5600,
+    "warehouse_revenue": "$43,898"
+  },
+  {
+    "id": 7,
+    "warehouse_id": "#WH-007",
+    "warehouse_name": "Southeast Storage",
+    "location": "404 Storage Dr, FL",
+    "manager": "William Green",
+    "contact_number": "+1 (555) 789-0123",
+    "stock_available": 9381,
+    "stock_shipping": 5343,
+    "warehouse_revenue": "$76,909"
+  },
+  {
+    "id": 8,
+    "warehouse_id": "#WH-008",
+    "warehouse_name": "Northwest Hub",
+    "location": "505 Commerce Pl, WA",
+    "manager": "Jessica White",
+    "contact_number": "+1 (555) 890-1234",
+    "stock_available": 6500,
+    "stock_shipping": 3453,
+    "warehouse_revenue": "$32,765"
+  },
+  {
+    "id": 9,
+    "warehouse_id": "#WH-009",
+    "warehouse_name": "Southwest Fulfillment",
+    "location": "606 Trade Ave, AZ",
+    "manager": "Christopher Black",
+    "contact_number": "+1 (555) 901-2345",
+    "stock_available": 7555,
+    "stock_shipping": 9000,
+    "warehouse_revenue": "$67,565"
+  },
+  {
+    "id": 10,
+    "warehouse_id": "#WH-010",
+    "warehouse_name": "Northeast Depot",
+    "location": "707 Distribution Rd, MA",
+    "manager": "Patricia Clark",
+    "contact_number": "+1 (555) 012-3456",
+    "stock_available": 5499,
+    "stock_shipping": 3433,
+    "warehouse_revenue": "$43,765"
+  }
+]

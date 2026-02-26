@@ -1,0 +1,74 @@
+[
+  {
+    "id": "#INV2540",
+    "orderBy": "Michael A. Miner",
+    "items": ["T-shirt", "Wallet"],
+    "returnDate": "07 Jan, 2023",
+    "total": "$289.00",
+    "returnStatus": "Completed"
+  },
+  {
+    "id": "#INV3924",
+    "orderBy": "Theresa T. Brose",
+    "items": ["Golden Dress", "Sunglass"],
+    "returnDate": "03 Dec, 2023",
+    "total": "$213.00",
+    "returnStatus": "Completed"
+  },
+  {
+    "id": "#INV5032",
+    "orderBy": "James L. Erickson",
+    "items": ["Shoes", "Cargo Pent"],
+    "returnDate": "28 Sep, 2023",
+    "total": "$735.00",
+    "returnStatus": "Completed"
+  },
+  {
+    "id": "#INV1695",
+    "orderBy": "Lily W. Wilson",
+    "items": ["Watch", "T-shirt"],
+    "returnDate": "10 Aug, 2023",
+    "total": "$324.00",
+    "returnStatus": "Pending"
+  },
+  {
+    "id": "#INV8473",
+    "orderBy": "Sarah M. Brooks",
+    "items": ["Hand Bag", "Watch"],
+    "returnDate": "22 May, 2023",
+    "total": "$153.00",
+    "returnStatus": "Completed"
+  },
+  {
+    "id": "#INV2150",
+    "orderBy": "Joe K. Hall",
+    "items": ["Headphone", "Dress"],
+    "returnDate": "15 Mar, 2023",
+    "total": "$424.00",
+    "returnStatus": "Pending"
+  },
+  {
+    "id": "#INV5636",
+    "orderBy": "Ralph Hueber",
+    "items": ["Headphone"],
+    "returnDate": "19 Dec, 2023",
+    "total": "$521.00",
+    "returnStatus": "Pending"
+  },
+  {
+    "id": "#INV2940",
+    "orderBy": "Sarah Drescher",
+    "items": ["Cap", "Sunglass", "Hand Bag"],
+    "returnDate": "11 Jun, 2023",
+    "total": "$313.00",
+    "returnStatus": "Completed"
+  },
+  {
+    "id": "#INV9027",
+    "orderBy": "Leonie Meister",
+    "items": ["Headphone", "T-shirt"],
+    "returnDate": "19 Mar, 2023",
+    "total": "$219.00",
+    "returnStatus": "Completed"
+  }
+]

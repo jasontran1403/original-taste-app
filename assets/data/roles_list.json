@@ -1,0 +1,58 @@
+[
+  {
+    "role": "Workspace Manager",
+    "workspace": "Facebook",
+    "tags": ["Manager", "Product"],
+    "users": ["avatar-4.jpg", "P", "avatar-3.jpg", "avatar-6.jpg"],
+    "status": true
+  },
+  {
+    "role": "Product Owner",
+    "workspace": "Slack",
+    "tags": ["Manager", "Product", "Data"],
+    "users": ["avatar-6.jpg", "avatar-7.jpg", "+12"],
+    "status": false
+  },
+  {
+    "role": "Product Designer",
+    "workspace": "Zoom",
+    "tags": ["Designer", "Data"],
+    "users": ["avatar-10.jpg"],
+    "status": true
+  },
+  {
+    "role": "Data Analyst",
+    "workspace": "Analytics",
+    "tags": ["Data"],
+    "users": ["avatar-10.jpg", "avatar-11.jpg", "avatar-12.jpg"],
+    "status": false
+  },
+  {
+    "role": "Tech Lead",
+    "workspace": "+ Add Workspace",
+    "tags": ["Product", "Data", "Supporter"],
+    "users": ["+ Add User"],
+    "status": false
+  },
+  {
+    "role": "Product Manager",
+    "workspace": "Meet",
+    "tags": ["System Design"],
+    "users": ["A", "J", "K", "+17"],
+    "status": true
+  },
+  {
+    "role": "Chief Product Owner",
+    "workspace": "Mail",
+    "tags": ["Manager", "Product"],
+    "users": ["avatar-2.jpg", "avatar-12.jpg"],
+    "status": true
+  },
+  {
+    "role": "Support Team Head",
+    "workspace": "Strip",
+    "tags": ["QA"],
+    "users": ["K"],
+    "status": false
+  }
+]

@@ -1,0 +1,112 @@
+[
+  {
+    "taskName": "Review system logs for any reported errors",
+    "createdDate": "23 April, 2024",
+    "createdTime": "05:09 PM",
+    "dueDate": "30 April, 2024",
+    "name": "Sean Kemper",
+    "avatar": "assets/users/avatar-2.jpg",
+    "status": "In-progress",
+    "priority": "High",
+    "checked": false
+  },
+  {
+    "taskName": "Conduct user testing to identify potential bugs",
+    "createdDate": "14 May, 2024",
+    "createdTime": "10:51 AM",
+    "dueDate": "25 Aug, 2024",
+    "name": "Victoria Sullivan",
+    "avatar": "assets/users/avatar-3.jpg",
+    "status": "Pending",
+    "priority": "Low",
+    "checked": true
+  },
+  {
+    "taskName": "Gather feedback from stakeholders regarding any issues",
+    "createdDate": "12 April, 2024",
+    "createdTime": "12:09 PM",
+    "dueDate": "28 April, 2024",
+    "name": "Liam Martinez",
+    "avatar": "assets/users/avatar-4.jpg",
+    "status": "In-progress",
+    "priority": "High",
+    "checked": false
+  },
+  {
+    "taskName": "Prioritize bugs based on severity and impact",
+    "createdDate": "10 April, 2024",
+    "createdTime": "10:09 PM",
+    "dueDate": "15 April, 2024",
+    "name": "Emma Johnson",
+    "avatar": "assets/users/avatar-5.jpg",
+    "status": "Completed",
+    "priority": "Medium",
+    "checked": false
+  },
+  {
+    "taskName": "Investigate and analyze the root cause of each bug",
+    "createdDate": "22 May, 2024",
+    "createdTime": "03:41 PM",
+    "dueDate": "05 July, 2024",
+    "name": "Olivia Thompson",
+    "avatar": "assets/users/avatar-1.jpg",
+    "status": "Pending",
+    "priority": "Low",
+    "checked": false
+  },
+  {
+    "taskName": "Develop and implement fixes for the identified bugs",
+    "createdDate": "18 May, 2024",
+    "createdTime": "09:09 AM",
+    "dueDate": "30 April, 2024",
+    "name": "Noah Garcia",
+    "avatar": "assets/users/avatar-6.jpg",
+    "status": "Completed",
+    "priority": "Low",
+    "checked": false
+  },
+  {
+    "taskName": "Complete any recurring tasks",
+    "createdDate": "05 April, 2024",
+    "createdTime": "08:50 AM",
+    "dueDate": "22 April, 2024",
+    "name": "Sophia Davis",
+    "avatar": "assets/users/avatar-7.jpg",
+    "status": "New",
+    "priority": "High",
+    "checked": false
+  },
+  {
+    "taskName": "Check emails and respond",
+    "createdDate": "15 Jun, 2024",
+    "createdTime": "11:09 PM",
+    "dueDate": "01 Aug, 2024",
+    "name": "Isabella Lopez",
+    "avatar": "assets/users/avatar-8.jpg",
+    "status": "Pending",
+    "priority": "Low",
+    "checked": false
+  },
+  {
+    "taskName": "Review schedule for the day",
+    "createdDate": "22 April, 2024",
+    "createdTime": "05:09 PM",
+    "dueDate": "30 April, 2024",
+    "name": "Ava Wilson",
+    "avatar": "assets/users/avatar-9.jpg",
+    "status": "In-progress",
+    "priority": "Medium",
+    "checked": true
+  },
+  {
+    "taskName": "Daily stand-up meeting",
+    "createdDate": "23 April, 2024",
+    "createdTime": "12:09 PM",
+    "dueDate": "30 April, 2024",
+    "name": "Oliver Lee",
+    "avatar": "assets/users/avatar-10.jpg",
+    "status": "In-progress",
+    "priority": "High",
+    "checked": false
+  }
+]

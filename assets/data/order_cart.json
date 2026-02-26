@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Men Black Slim Fit T-shirt",
+    "image": "assets/product/p-1.png",
+    "color": "Dark",
+    "size": "M",
+    "quantity": 1,
+    "item_price": 80.00,
+    "tax": 3.00,
+    "total": 83.00
+  },
+  {
+    "name": "Dark Green Cargo Pent",
+    "image": "assets/product/p-5.png",
+    "color": "Dark Green",
+    "size": "M",
+    "quantity": 3,
+    "item_price": 330.00,
+    "tax": 4.00,
+    "total": 334.00
+  },
+  {
+    "name": "Men Dark Brown Wallet",
+    "image": "assets/product/p-8.png",
+    "color": "Brown",
+    "size": "S",
+    "quantity": 1,
+    "item_price": 132.00,
+    "tax": 5.00,
+    "total": 137.00
+  },
+  {
+    "name": "Kid's Yellow T-shirt",
+    "image": "assets/product/p-10.png",
+    "color": "Yellow",
+    "size": "S",
+    "quantity": 2,
+    "item_price": 220.00,
+    "tax": 3.00,
+    "total": 223.00
+  }
+]
