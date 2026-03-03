@@ -1,21 +1,24 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_boxicons/flutter_boxicons.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:original_taste/controller/ui/general/orders/order_detail_controller.dart';
-import 'package:original_taste/helper/theme/theme_customizer.dart';
+import 'package:original_taste/helper/services/seller_services.dart';
+import 'package:original_taste/helper/theme/app_theme.dart';
 import 'package:original_taste/helper/utils/mixins/ui_mixins.dart';
 import 'package:original_taste/helper/utils/my_shadow.dart';
-import 'package:original_taste/helper/widgets/my_button.dart';
 import 'package:original_taste/helper/widgets/my_card.dart';
 import 'package:original_taste/helper/widgets/my_container.dart';
 import 'package:original_taste/helper/widgets/my_flex.dart';
 import 'package:original_taste/helper/widgets/my_flex_item.dart';
 import 'package:original_taste/helper/widgets/my_spacing.dart';
 import 'package:original_taste/helper/widgets/my_text.dart';
-import 'package:original_taste/images.dart';
 import 'package:original_taste/views/layout/layout.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+
+import '../../../../controller/ui/general/orders/order_detail_controller.dart';
+import '../../../../helper/services/api_helper.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   const OrderDetailScreen({super.key});
@@ -25,47 +28,66 @@ class OrderDetailScreen extends StatefulWidget {
 }
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> with UIMixin {
-  OrderDetailController controller = Get.put(OrderDetailController());
+  late OrderDetailController controller;
+  bool _isDownloading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.put(OrderDetailController(), tag: 'order_detail_${DateTime.now().millisecondsSinceEpoch}');
+  }
+
   @override
   Widget build(BuildContext context) {
-    return GetBuilder(
+    return GetBuilder<OrderDetailController>(
       init: controller,
-      tag: 'order_detail_controller',
-      builder: (controller) {
+      builder: (ctrl) {
+        if (ctrl.isLoading) {
+          return Layout(
+            screenName: 'CHI TIẾT ĐƠN HÀNG',
+            child: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (ctrl.errorMessage != null) {
+          return Layout(
+            screenName: 'CHI TIẾT ĐƠN HÀNG',
+            child: Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.error_outline, size: 52, color: Colors.red.shade300),
+                MySpacing.height(12),
+                MyText.bodyMedium(ctrl.errorMessage!, color: Colors.red),
+              ]),
+            ),
+          );
+        }
+        if (ctrl.order == null) {
+          return const Layout(screenName: 'CHI TIẾT ĐƠN HÀNG', child: SizedBox());
+        }
+
+        final o = ctrl.order!;
         return Layout(
-          screenName: "ORDER DETAIL",
+          screenName: 'CHI TIẾT ĐƠN HÀNG',
           child: MyFlex(
             children: [
+              // ── LEFT: 9 cols ──────────────────────────────────
               MyFlexItem(
                 sizes: 'lg-9',
-                child: Column(
-                  children: [
-                    orderDetail(),
-                    MySpacing.height(12),
-                    product(),
-                    MySpacing.height(12),
-                    orderTimeline(),
-                    MySpacing.height(12),
-                    MyCard(
-                      paddingAll: 20,
-                       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
-                      borderRadiusAll: 12,
-                      child: MyFlex(
-                        contentPadding: false,
-                        children: [
-                          MyFlexItem(sizes: 'lg-3', child: stats("Vender", "Catpiller", "assets/svg/shop_2.svg")),
-                          MyFlexItem(sizes: 'lg-3', child: stats("Date", "Apr 23, 2024", "assets/svg/calendar.svg")),
-                          MyFlexItem(sizes: 'lg-3', child: stats("Paid By", "Gaston Lapierre", "assets/svg/user_circle.svg")),
-                          MyFlexItem(sizes: 'lg-3', child: stats("Reference #IMEMO", "#0758267/90", "assets/svg/clipboard_text.svg")),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                child: Column(children: [
+                  _buildHeader(ctrl, o),
+                  MySpacing.height(12),
+                  _buildItemsTable(ctrl, o),
+                ]),
               ),
+              // ── RIGHT: 3 cols ─────────────────────────────────
               MyFlexItem(
                 sizes: 'lg-3',
-                child: Column(children: [orderSummery(), MySpacing.height(12), paymentInformation(), MySpacing.height(12), customerDetails()]),
+                child: Column(children: [
+                  _buildOrderSummary(ctrl, o),
+                  MySpacing.height(12),
+                  _buildPaymentInfo(ctrl, o),
+                  MySpacing.height(12),
+                  _buildCustomerDetails(o),
+                ]),
               ),
             ],
           ),
@@ -74,496 +96,233 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with UIMixin {
     );
   }
 
-  Widget orderDetail() {
+  // ══════════════════════════════════════════════════════════════
+  // HEADER CARD
+  // ══════════════════════════════════════════════════════════════
+
+  Widget _buildHeader(OrderDetailController ctrl, OrderModel o) {
     return MyCard(
       paddingAll: 20,
-       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
+      shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
       borderRadiusAll: 12,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Mã đơn + badges + nút ───────────────────────────
           MyFlex(
             wrapAlignment: WrapAlignment.spaceBetween,
-            wrapCrossAlignment: WrapCrossAlignment.start,
-            runAlignment: WrapAlignment.spaceBetween,
-
+            wrapCrossAlignment: WrapCrossAlignment.center,
             children: [
               MyFlexItem(
                 sizes: 'lg-6',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        MyText.bodyMedium(
-                          "#0758267/90",
-                          style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontSize: 17, fontWeight: FontWeight.w600),
-                        ),
-                        MySpacing.width(12),
-                        MyContainer(
-                          color: contentTheme.success.withValues(alpha: 0.2),
-                          padding: MySpacing.xy(14, 6),
-                          child: MyText.bodyMedium(
-                            "Paid",
-                            style: TextStyle(
-                              fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: contentTheme.success,
-                            ),
-                          ),
-                        ),
-                        MySpacing.width(12),
-                        MyContainer.bordered(
-                          borderRadiusAll: 12,
-                          borderColor: contentTheme.warning,
-                          padding: MySpacing.xy(14, 6),
-                          child: MyText.bodyMedium(
-                            "In Progress",
-                            style: TextStyle(
-                              fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: contentTheme.warning,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    MySpacing.height(12),
-                    MyText.bodyMedium("Order / Order Details / #0758267/90 - April 23 , 2024 at 6:23 pm"),
-                  ],
-                ),
-              ),
-              MyFlexItem(
-                sizes: 'lg-6',
-                child: Row(
-                  spacing: 12,
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    MyContainer.bordered(
-                      onTap: () {},
-                      borderColor: contentTheme.secondary,
-                      padding: MySpacing.xy(16, 12),
-                      borderRadiusAll: 12,
-                      child: MyText.bodyMedium("Refund"),
-                    ),
-                    MyContainer.bordered(
-                      onTap: () {},
-                      borderColor: contentTheme.secondary,
-                      padding: MySpacing.xy(16, 12),
-                      borderRadiusAll: 12,
-                      child: MyText.bodyMedium("Return"),
-                    ),
-                    MyContainer(
-                      onTap: () {},
-                      color: contentTheme.primary,
-                      padding: MySpacing.xy(16, 12),
-                      borderRadiusAll: 12,
-                      child: MyText.bodyMedium("Edit Order", color: contentTheme.onPrimary),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          MySpacing.height(20),
-          MyText.titleMedium(
-            "Progress",
-            style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          MySpacing.height(20),
-          Wrap(spacing: 16, runSpacing: 16, children: controller.steps.map((step) => buildProgressItem(step)).toList()),
-          MySpacing.height(20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              MyContainer.bordered(
-                padding: MySpacing.xy(12, 8),
-                borderRadiusAll: 12,
-                color: ThemeCustomizer.instance.theme == ThemeMode.dark ? Color(0xff22282e) : Color(0xfff9f7f7),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Boxicons.bx_arrow_from_left, size: 16),
-                    SizedBox(width: 6),
-                    MyText.bodyMedium("Estimated shipping date: "),
-                    MyText.bodyMedium("Apr 25, 2024"),
-                  ],
-                ),
-              ),
-
-              MyContainer(
-                color: contentTheme.primary,
-                padding: MySpacing.xy(16, 12),
-                borderRadiusAll: 12,
-                child: MyText.bodyMedium("Make As Ready To Ship", color: contentTheme.onPrimary),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget product() {
-    final List<Product> products = [
-      Product(
-        imagePath: Images.product[1],
-        name: 'Men Black Slim Fit T-shirt',
-        size: 'M',
-        status: 'Ready',
-        quantity: 1,
-        price: 80.00,
-        text: 3.00,
-        amount: 83.00,
-      ),
-      Product(
-        imagePath: Images.product[5],
-        name: 'Dark Green Cargo Pant',
-        size: 'M',
-        status: 'Packaging',
-        quantity: 3,
-        price: 330.00,
-        text: 4.00,
-        amount: 334.00,
-      ),
-      Product(
-        imagePath: Images.product[8],
-        name: 'Men Dark Brown Wallet',
-        size: 'S',
-        status: 'Ready',
-        quantity: 1,
-        price: 132.00,
-        text: 5.00,
-        amount: 137.00,
-      ),
-      Product(
-        imagePath: Images.product[10],
-        name: 'Kid\'s Yellow T-shirt',
-        size: 'S',
-        status: 'Packaging',
-        quantity: 2,
-        price: 220.00,
-        text: 3.00,
-        amount: 223.00,
-      ),
-    ];
-
-    Color getStatusColor(String status) {
-      switch (status) {
-        case 'Ready':
-          return Colors.green;
-        case 'Packaging':
-          return Colors.orange;
-        default:
-          return Colors.grey;
-      }
-    }
-
-    return MyCard(
-      paddingAll: 0,
-      borderRadiusAll: 12,
-       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: MySpacing.all(20),
-            child: MyText.titleMedium("Product", style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontWeight: FontWeight.w600)),
-          ),
-          Divider(height: 0),
-          Padding(
-            padding: MySpacing.all(20),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                headingRowColor: WidgetStateColor.resolveWith((states) => contentTheme.secondary.withValues(alpha: 0.2)),
-                columnSpacing: 120,
-                columns: [
-                  DataColumn(label: MyText.bodyMedium('Product Name & Size')),
-                  DataColumn(label: MyText.bodyMedium('Status')),
-                  DataColumn(label: MyText.bodyMedium('Quantity')),
-                  DataColumn(label: MyText.bodyMedium('Price')),
-                  DataColumn(label: MyText.bodyMedium('Text')),
-                  DataColumn(label: MyText.bodyMedium('Amount')),
-                ],
-                rows:
-                    products.map((product) {
-                      return DataRow(
-                        cells: [
-                          DataCell(
-                            Row(
-                              children: [
-                                Image.asset(product.imagePath, width: 40, height: 40),
-                                const SizedBox(width: 8),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(product.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                    Text("Size: ${product.size}", style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          DataCell(
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: getStatusColor(product.status).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(product.status, style: TextStyle(color: getStatusColor(product.status), fontSize: 13)),
-                            ),
-                          ),
-                          DataCell(Text(product.quantity.toString())),
-                          DataCell(Text('\$${product.price.toStringAsFixed(2)}')),
-                          DataCell(Text('\$${product.text.toStringAsFixed(2)}')),
-                          DataCell(Text('\$${product.amount.toStringAsFixed(2)}')),
-                        ],
-                      );
-                    }).toList(),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget orderTimeline() {
-    final timelineItems = [
-      TimelineItem(
-        icon: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange, padding: MySpacing.all(12)),
-        title: "The packing has been started",
-        subtitle: "Confirmed by Gaston Lapierre",
-        timestamp: "April 23, 2024, 09:40 am",
-      ),
-      TimelineItem(
-        icon: const Icon(Icons.check_circle, color: Colors.green),
-        title: "The Invoice has been sent to the customer",
-        subtitle: "Invoice email was sent to hello@dundermuffilin.com",
-        timestamp: "April 23, 2024, 09:40 am",
-        action: TextButton(onPressed: () {}, child: MyText.bodyMedium("Resend Invoice")),
-      ),
-      TimelineItem(
-        icon: const Icon(Icons.check_circle, color: Colors.green),
-        title: "The Invoice has been created",
-        subtitle: "Invoice created by Gaston Lapierre",
-        timestamp: "April 23, 2024, 09:40 am",
-        action: MyButton(
-          onPressed: () {},
-          borderRadiusAll: 4,
-          elevation: 0,
-          backgroundColor: contentTheme.success,
-          child: MyText.bodyMedium("Download Invoice", color: contentTheme.onSecondary),
-        ),
-      ),
-      TimelineItem(
-        icon: const Icon(Icons.check_circle, color: Colors.green),
-        title: "Order Payment",
-        subtitle: "Using Master Card",
-        timestamp: "April 23, 2024, 09:40 am",
-        extraWidget: Row(
-          children: [MyText.bodyMedium("Status:",), MySpacing.width(4), MyText.bodyMedium("Paid")],
-        ),
-      ),
-      TimelineItem(
-        icon: const Icon(Icons.check_circle, color: Colors.green),
-        title: "4 Order confirm by Gaston Lapierre",
-        timestamp: "April 23, 2024, 09:40 am",
-        extraWidget: Wrap(
-          spacing: 8,
-          children: List.generate(4, (i) => Chip(label: MyText.bodyMedium("Order ${i + 1}"))),
-        ),
-      ),
-    ];
-
-    return MyCard(
-      paddingAll: 0,
-      borderRadiusAll: 12,
-       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: MySpacing.all(20),
-            child: MyText.titleMedium(
-              "Order Timeline",
-              style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontWeight: FontWeight.w600),
-            ),
-          ),
-          Divider(height: 0),
-          SizedBox(
-            height: 400,
-            child: ListView.builder(
-              shrinkWrap: true,
-              padding: const EdgeInsets.all(16),
-              itemCount: timelineItems.length,
-              itemBuilder: (context, index) {
-                final item = timelineItems[index];
-                return TimelineTile(item: item, isFirst: index == 0);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget stats(String title, String subTitle, String svgImage) {
-    return Row(
-      children: [
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [MyText.titleMedium(title), MyText.bodyMedium(subTitle)])),
-        MyContainer(borderRadiusAll: 12, color: contentTheme.secondary.withValues(alpha: 0.2), child: SvgPicture.asset(svgImage)),
-      ],
-    );
-  }
-
-  Widget buildProgressItem(ProgressStep step) {
-    return SizedBox(
-      width: 160,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          LinearProgressIndicator(
-            value: step.progress,
-            backgroundColor: Colors.grey[300],
-            borderRadius: BorderRadius.circular(12),
-            valueColor: AlwaysStoppedAnimation<Color>(step.color),
-            minHeight: 10,
-          ),
-          MySpacing.height(12),
-          step.loading
-              ? Row(
-                children: [
-                  MyText.labelLarge(step.label),
-                  MySpacing.width(12),
-                  SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(step.color)),
-                  ),
-                ],
-              )
-              : MyText.labelLarge(step.label),
-        ],
-      ),
-    );
-  }
-
-  Widget orderSummery() {
-    Widget orderSummeryWidget(String svg, String title, String subTitle) {
-      return Padding(
-        padding: MySpacing.x(12),
-        child: Row(
-          children: [
-            SvgPicture.asset(svg, colorFilter: ColorFilter.mode(contentTheme.secondary, BlendMode.srcIn), height: 16),
-            MySpacing.width(12),
-            Expanded(child: MyText.bodyMedium(title)),
-            MySpacing.width(12),
-            MyText.bodyMedium(subTitle),
-          ],
-        ),
-      );
-    }
-
-    return MyCard(
-      paddingAll: 0,
-      borderRadiusAll: 12,
-       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: MySpacing.all(20),
-            child: MyText.titleMedium(
-              "Order Summary",
-              style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontWeight: FontWeight.w600),
-            ),
-          ),
-          Divider(height: 0),
-          MySpacing.height(12),
-          Column(
-            spacing: 12,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              orderSummeryWidget('assets/svg/clipboard_text.svg', 'Sub Total:', '\$777.00'),
-              Divider(height: 0),
-              orderSummeryWidget('assets/svg/ticket_broken.svg', 'Discount:', '-\$60.00'),
-              Divider(height: 0),
-              orderSummeryWidget('assets/svg/kick_scooter_broken.svg', 'Delivery Charge:', '\$00.00'),
-              Divider(height: 0),
-              orderSummeryWidget('assets/svg/calculator_minimalistic_broken.svg', 'Estimated Tax (15.5%):', '\$20.00'),
-            ],
-          ),
-          MySpacing.height(16),
-          Padding(
-            padding: MySpacing.all(12),
-            child: Row(children: [Expanded(child: MyText.bodyMedium("Total Amount")), MySpacing.width(12), MyText.bodyMedium("\$737.00")]),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget paymentInformation() {
-    return MyCard(
-      paddingAll: 0,
-      borderRadiusAll: 12,
-       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: MySpacing.all(20),
-            child: MyText.titleMedium(
-              "Payment Information",
-              style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontWeight: FontWeight.w600),
-            ),
-          ),
-          Divider(height: 0),
-          Padding(
-            padding: MySpacing.all(16),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    MyContainer(
-                      paddingAll: 8,
-                      borderRadiusAll: 12,
-                      color: contentTheme.secondary.withValues(alpha: 0.2),
-                      child: SvgPicture.asset('assets/svg/mastercard.svg', height: 32),
-                    ),
-                    MySpacing.width(12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [MyText.bodyMedium("Master Card"), MySpacing.height(6), MyText.bodyMedium("xxxx xxxx xxxx 7812")],
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Wrap(spacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                    MyText.bodyMedium(
+                      o.orderCode,
+                      style: TextStyle(
+                        fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    SvgPicture.asset('assets/svg/check_circle.svg', colorFilter: ColorFilter.mode(contentTheme.success, BlendMode.srcIn)),
-                  ],
-                ),
-                MySpacing.height(6),
-                Row(
+                    // Payment badge
+                    _Chip(
+                      label: ctrl.paymentStatusLabel,
+                      color: ctrl.paymentStatusColor,
+                      filled: true,
+                    ),
+                    // Order status badge
+                    _Chip(
+                      label: ctrl.statusLabel,
+                      color: ctrl.statusColor,
+                      filled: false,
+                    ),
+                  ]),
+                  MySpacing.height(8),
+                  MyText.bodySmall(ctrl.formatTimestamp(o.createdAt), muted: true),
+                ]),
+              ),
+              MyFlexItem(
+                sizes: 'lg-6',
+                child: Wrap(
+                  spacing: 10,
+                  alignment: WrapAlignment.end,
                   children: [
-                    MyText.bodyMedium("Transaction ID :"),
-                    MySpacing.width(4),
-                    Expanded(child: MyText.bodyMedium("#IDN768139059", color: contentTheme.secondary, fontWeight: 600, muted: true,maxLines: 1,)),
+                    // Nút xuất invoice
+                    MyContainer(
+                      onTap: _isDownloading ? null : () => _downloadInvoice(o),
+                      color: _isDownloading
+                          ? contentTheme.primary.withValues(alpha: 0.4)
+                          : contentTheme.primary,
+                      padding: MySpacing.xy(16, 10),
+                      borderRadiusAll: 10,
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        _isDownloading
+                            ? SizedBox(
+                            width: 14, height: 14,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: contentTheme.onPrimary))
+                            : Icon(Icons.picture_as_pdf_outlined,
+                            size: 15, color: contentTheme.onPrimary),
+                        MySpacing.width(6),
+                        MyText.bodyMedium(
+                          _isDownloading ? 'Đang tải...' : 'Xuất Invoice',
+                          color: contentTheme.onPrimary,
+                          fontWeight: 600,
+                        ),
+                      ]),
+                    ),
+                    // Nút quay lại
+                    MyContainer.bordered(
+                      onTap: () => Get.back(),
+                      borderColor: contentTheme.secondary,
+                      padding: MySpacing.xy(16, 10),
+                      borderRadiusAll: 10,
+                      child: MyText.bodyMedium('Quay lại'),
+                    ),
                   ],
                 ),
-                MySpacing.height(6),
-                Row(
-                  children: [
-                    MyText.bodyMedium("Card Holder Name :"),
-                    MySpacing.width(4),
-                    Expanded(child: MyText.bodyMedium("Gaston Lapierre", color: contentTheme.secondary, fontWeight: 600, muted: true,maxLines: 1,)),
-                  ],
+              ),
+            ],
+          ),
+
+          MySpacing.height(20),
+
+          // ── Progress ─────────────────────────────────────────
+          MyText.bodyMedium(
+            'Tiến độ',
+            style: TextStyle(
+                fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+                fontSize: 14,
+                fontWeight: FontWeight.w700),
+          ),
+          MySpacing.height(14),
+          Wrap(
+            spacing: 16,
+            runSpacing: 12,
+            children: ctrl.steps.map((step) => _buildProgressItem(step)).toList(),
+          ),
+
+          // ── Phương thức thanh toán ────────────────────────────
+          if (o.paymentMethod != null) ...[
+            MySpacing.height(16),
+            Container(
+              padding: MySpacing.xy(12, 8),
+              decoration: BoxDecoration(
+                color: contentTheme.secondary.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: contentTheme.secondary.withValues(alpha: 0.15)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(
+                  o.paymentMethod == 'CASH'
+                      ? Icons.money_outlined
+                      : Icons.account_balance_outlined,
+                  size: 15,
+                  color: contentTheme.secondary,
                 ),
+                MySpacing.width(6),
+                MyText.bodySmall('Thanh toán: ', muted: true),
+                MyText.bodySmall(ctrl.paymentMethodLabel, fontWeight: 600),
+              ]),
+            ),
+          ],
+
+          // ── Ghi chú ──────────────────────────────────────────
+          if (o.notes != null && o.notes!.isNotEmpty) ...[
+            MySpacing.height(12),
+            Container(
+              padding: MySpacing.all(10),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
+              ),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Icon(Icons.notes_outlined, size: 14, color: Colors.amber.shade700),
+                MySpacing.width(6),
+                Expanded(
+                  child: MyText.bodySmall('Ghi chú: ${o.notes}',
+                      color: Colors.amber.shade800),
+                ),
+              ]),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressItem(ProgressStep step) {
+    return SizedBox(
+      width: 148,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            value: step.progress,
+            backgroundColor: Colors.grey.shade200,
+            valueColor: AlwaysStoppedAnimation<Color>(step.color),
+            minHeight: 8,
+          ),
+        ),
+        MySpacing.height(8),
+        step.loading
+            ? Row(children: [
+          MyText.bodySmall(step.label, fontWeight: 600),
+          MySpacing.width(8),
+          SizedBox(
+            width: 12, height: 12,
+            child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(step.color)),
+          ),
+        ])
+            : MyText.bodySmall(step.label, fontWeight: 600),
+      ]),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // ITEMS TABLE
+  // ══════════════════════════════════════════════════════════════
+
+  Widget _buildItemsTable(OrderDetailController ctrl, OrderModel o) {
+    return MyCard(
+      paddingAll: 0,
+      borderRadiusAll: 12,
+      shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: MySpacing.all(20),
+            child: MyText.titleMedium(
+              'Sản phẩm (${o.items.length})',
+              style: TextStyle(
+                  fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+                  fontWeight: FontWeight.w600),
+            ),
+          ),
+          const Divider(height: 0),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: MySpacing.all(16),
+            child: DataTable(
+              headingRowColor: WidgetStateColor.resolveWith(
+                      (s) => contentTheme.secondary.withValues(alpha: 0.08)),
+              headingRowHeight: 40,
+              dataRowMinHeight: 52,
+              dataRowMaxHeight: 80,
+              columnSpacing: 24,
+              columns: const [
+                DataColumn(label: Text('Sản phẩm')),
+                DataColumn(label: Text('Loại / Giá')),
+                DataColumn(label: Text('SL')),
+                DataColumn(label: Text('Đơn giá')),
+                DataColumn(label: Text('Thành tiền')),
               ],
+              rows: o.items.map((item) => _buildItemRow(ctrl, item)).toList(),
             ),
           ),
         ],
@@ -571,121 +330,396 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with UIMixin {
     );
   }
 
-  Widget customerDetails() {
+  DataRow _buildItemRow(OrderDetailController ctrl, OrderItemModel item) {
+    return DataRow(cells: [
+      // Tên sản phẩm + ảnh
+      DataCell(
+        SizedBox(
+          width: 200,
+          child: Row(children: [
+            // Ảnh
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: item.productImageUrl != null
+                  ? Image.network(
+                SellerService.buildImageUrl(item.productImageUrl),
+                width: 40, height: 40, fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _imagePlaceholder(),
+              )
+                  : _imagePlaceholder(),
+            ),
+            MySpacing.width(10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(item.productName,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                  if (item.unit != null)
+                    Text('ĐVT: ${item.unit}',
+                        style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                ],
+              ),
+            ),
+          ]),
+        ),
+      ),
+      // Variant + price name
+      DataCell(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (item.variantName != null)
+              Container(
+                padding: MySpacing.xy(6, 2),
+                decoration: BoxDecoration(
+                  color: contentTheme.secondary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(item.variantName!,
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: contentTheme.secondary,
+                        fontWeight: FontWeight.w600)),
+              ),
+            if (item.variantName != null) const SizedBox(height: 3),
+            Text(item.priceName,
+                style: TextStyle(
+                    fontSize: 11,
+                    color: contentTheme.primary,
+                    fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ),
+      // Số lượng
+      DataCell(Text(
+        item.quantity % 1 == 0
+            ? item.quantity.toInt().toString()
+            : item.quantity.toString(),
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      )),
+      // Đơn giá
+      DataCell(Text(
+        ctrl.formatCurrency(item.unitPrice),
+        style: const TextStyle(fontSize: 13),
+      )),
+      // Thành tiền
+      DataCell(Text(
+        ctrl.formatCurrency(item.subtotal),
+        style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: contentTheme.primary,
+            fontSize: 13),
+      )),
+    ]);
+  }
+
+  Widget _imagePlaceholder() {
+    return Container(
+      width: 40, height: 40,
+      decoration: BoxDecoration(
+        color: contentTheme.secondary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Icon(Icons.fastfood_outlined, size: 18, color: contentTheme.secondary),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // RIGHT COLUMN
+  // ══════════════════════════════════════════════════════════════
+
+  Widget _buildOrderSummary(OrderDetailController ctrl, OrderModel o) {
     return MyCard(
       paddingAll: 0,
       borderRadiusAll: 12,
-       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
+      shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: MySpacing.all(20),
-            child: MyText.titleMedium(
-              "Customer Details",
-              style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontWeight: FontWeight.w600),
-            ),
+          _cardHeader('Tổng kết đơn hàng'),
+          const Divider(height: 0),
+          MySpacing.height(12),
+          _summaryRow('Tạm tính', ctrl.formatCurrency(o.totalAmount)),
+          const Divider(height: 8),
+          _summaryRow(
+            'Chiết khấu',
+            o.discountAmount > 0 ? '-${ctrl.formatCurrency(o.discountAmount)}' : '0đ',
+            valueColor: o.discountAmount > 0 ? Colors.green : null,
           ),
-          Divider(height: 0),
+          const Divider(height: 8),
+          Padding(
+            padding: MySpacing.fromLTRB(16, 8, 16, 16),
+            child: Row(children: [
+              MyText.bodyMedium('THÀNH TIỀN', fontWeight: 700),
+              const Spacer(),
+              MyText.bodyMedium(
+                ctrl.formatCurrency(o.finalAmount),
+                style: TextStyle(
+                  fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: contentTheme.primary,
+                ),
+              ),
+            ]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentInfo(OrderDetailController ctrl, OrderModel o) {
+    return MyCard(
+      paddingAll: 0,
+      borderRadiusAll: 12,
+      shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _cardHeader('Thanh toán'),
+          const Divider(height: 0),
           Padding(
             padding: MySpacing.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    MyContainer.bordered(
-                      paddingAll: 1,
-                      borderRadiusAll: 12,
-                      clipBehavior: Clip.antiAliasWithSaveLayer,
-                      child: MyContainer(
-                        paddingAll: 0,
-                        borderRadiusAll: 12,
-                        clipBehavior: Clip.antiAliasWithSaveLayer,
-                        child: Image.asset(Images.userAvatars[1], height: 50),
-                      ),
+                // Payment method icon + name
+                Row(children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: contentTheme.secondary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    MySpacing.width(12),
-                    Column(
+                    child: Icon(
+                      o.paymentMethod == 'CASH'
+                          ? Icons.money_outlined
+                          : Icons.account_balance_outlined,
+                      size: 22,
+                      color: contentTheme.secondary,
+                    ),
+                  ),
+                  MySpacing.width(12),
+                  Expanded(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        MyText.bodyMedium("Gaston Lapierre"),
-                        MySpacing.height(6),
-                        MyText.bodyMedium("hello@dundermuffilin.com", color: contentTheme.primary),
+                        MyText.bodyMedium(ctrl.paymentMethodLabel, fontWeight: 700),
+                        MySpacing.height(2),
+                        MyText.bodySmall('Phương thức thanh toán', muted: true),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                  // Payment status icon
+                  Icon(
+                    o.paymentStatus == 'PAID'
+                        ? Icons.check_circle
+                        : Icons.pending_outlined,
+                    size: 20,
+                    color: ctrl.paymentStatusColor,
+                  ),
+                ]),
                 MySpacing.height(12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [MyText.titleMedium('Contact Number', fontWeight: 700, muted: true), Icon(Icons.edit, size: 20)],
-                ),
-                MySpacing.height(6),
-                MyText.bodyMedium('(723) 732-760-5760'),
-                MySpacing.height(20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [MyText.bodyMedium('Shipping Address', fontWeight: 700, muted: true), Icon(Icons.edit, size: 20)],
-                ),
-
-                MySpacing.height(6),
-
-                MyText.bodyMedium('Wilson\'s Jewelers LTD'),
-                MyText.bodyMedium('1344 Hershell Hollow Road,'),
-                MyText.bodyMedium('Tukwila, WA 98168,'),
-                MyText.bodyMedium('United States'),
-                MyText.bodyMedium('(723) 732-760-5760'),
-
-                MySpacing.height(20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [MyText.bodyMedium('Billing Address', fontWeight: 700, muted: true), Icon(Icons.edit, size: 20)],
-                ),
-                MySpacing.height(6),
-                MyText.bodyMedium('Same as shipping address'),
+                Row(children: [
+                  MyText.bodySmall('Trạng thái: ', muted: true),
+                  Container(
+                    padding: MySpacing.xy(7, 3),
+                    decoration: BoxDecoration(
+                      color: ctrl.paymentStatusColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: MyText.bodySmall(
+                      ctrl.paymentStatusLabel,
+                      color: ctrl.paymentStatusColor,
+                      fontWeight: 600,
+                    ),
+                  ),
+                ]),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCustomerDetails(OrderModel o) {
+    return MyCard(
+      paddingAll: 0,
+      borderRadiusAll: 12,
+      shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _cardHeader('Thông tin khách hàng'),
+          const Divider(height: 0),
+          Padding(
+            padding: MySpacing.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Avatar + tên
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: contentTheme.primary.withValues(alpha: 0.1),
+                    child: Text(
+                      (o.customerName?.isNotEmpty == true)
+                          ? o.customerName![0].toUpperCase()
+                          : '?',
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: contentTheme.primary),
+                    ),
+                  ),
+                  MySpacing.width(12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        MyText.bodyMedium(
+                          o.customerName?.isNotEmpty == true
+                              ? o.customerName!
+                              : 'Khách lẻ',
+                          fontWeight: 700,
+                        ),
+                        if (o.customerPhone != null)
+                          MyText.bodySmall(o.customerPhone!, muted: true),
+                      ],
+                    ),
+                  ),
+                ]),
+
+                if (o.shippingAddress != null && o.shippingAddress!.isNotEmpty) ...[
+                  MySpacing.height(14),
+                  _infoRow(Icons.location_on_outlined, 'Địa chỉ', o.shippingAddress!),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // HELPERS
+  // ══════════════════════════════════════════════════════════════
+
+  Widget _cardHeader(String title) {
+    return Padding(
+      padding: MySpacing.all(16),
+      child: MyText.bodyMedium(
+        title,
+        style: TextStyle(
+          fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+          fontWeight: FontWeight.w700,
+          fontSize: 14,
+        ),
+      ),
+    );
+  }
+
+  Widget _summaryRow(String label, String value, {Color? valueColor}) {
+    return Padding(
+      padding: MySpacing.fromLTRB(16, 4, 16, 4),
+      child: Row(children: [
+        MyText.bodySmall(label, muted: true),
+        const Spacer(),
+        MyText.bodySmall(value,
+            fontWeight: 600, color: valueColor),
+      ]),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Icon(icon, size: 14, color: contentTheme.secondary.withValues(alpha: 0.6)),
+      MySpacing.width(6),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          MyText.bodySmall(label, muted: true),
+          MySpacing.height(2),
+          MyText.bodySmall(value, fontWeight: 600),
+        ]),
+      ),
+    ]);
+  }
+
+  // ── Download Invoice ─────────────────────────────────────────
+  Future<void> _downloadInvoice(OrderModel o) async {
+    setState(() => _isDownloading = true);
+
+    try {
+      final result = await SellerService.generateAndSendInvoice(o.id);
+
+      if (result.isSuccess) {
+        _showSuccess(result.message ?? 'Đã tạo và gửi hóa đơn thành công qua Telegram');
+      } else {
+        final errMsg = getErrorMessage(result.code, result.message ?? 'Lỗi không xác định');
+        _showError(errMsg);
+      }
+    } catch (e) {
+      _showError('Lỗi: $e');
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
+  }
+
+  void _showSuccess(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: Colors.green.shade700,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showError(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: Colors.red.shade600,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
 }
 
-class TimelineTile extends StatelessWidget {
-  final TimelineItem item;
-  final bool isFirst;
+// ══════════════════════════════════════════════════════════════════
+// CHIP WIDGET
+// ══════════════════════════════════════════════════════════════════
 
-  const TimelineTile({super.key, required this.item, required this.isFirst});
+class _Chip extends StatelessWidget with UIMixin {
+  final String label;
+  final Color color;
+  final bool filled;
+
+  const _Chip({required this.label, required this.color, required this.filled});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Column(
-          children: [
-            MyContainer.rounded(width: 40, height: 40, paddingAll: 0, child: Center(child: item.icon)),
-            MyContainer(paddingAll: 0, width: 2, height: 80, color: Colors.grey.shade300),
-          ],
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: MyContainer(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                MyText.titleMedium(item.title),
-                if (item.subtitle != null) Padding(padding: MySpacing.only(top: 4.0), child: MyText.bodyMedium(item.subtitle!)),
-                if (item.extraWidget != null) Padding(padding: MySpacing.only(top: 8.0), child: item.extraWidget!),
-                if (item.action != null) Padding(padding: MySpacing.only(top: 8.0), child: item.action!),
-                Padding(padding: MySpacing.only(top: 8.0), child: MyText.bodyMedium(item.timestamp)),
-              ],
-            ),
-          ),
-        ),
-      ],
+    return Container(
+      padding: MySpacing.xy(10, 5),
+      decoration: BoxDecoration(
+        color: filled ? color.withValues(alpha: 0.15) : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        border: filled ? null : Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color)),
     );
   }
 }

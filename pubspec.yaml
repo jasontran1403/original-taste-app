@@ -110,8 +110,6 @@ flutter:
     - assets/svg/
     - assets/users/
     - assets/data/
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
 
 flutter_launcher_icons:
   android: "launcher_icon"          # Tên icon Android

@@ -19,8 +19,6 @@ class AuthLayout extends StatefulWidget {
 }
 
 class _AuthLayoutState extends State<AuthLayout> {
-  // GlobalKey phải nằm trong State (không phải trong Controller)
-  // để mỗi lần widget mount sẽ tạo key mới → tránh Duplicate GlobalKey
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final GlobalKey _scrollKey = GlobalKey();
 

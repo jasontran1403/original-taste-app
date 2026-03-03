@@ -25,7 +25,7 @@ class ThemeCustomizer {
   ThemeMode topBarTheme = ThemeMode.light;
 
   bool rightBarOpen = false;
-  bool leftBarCondensed = false;
+  bool leftBarCondensed = true;
   bool isBoxedLayout = false;
 
   static ThemeCustomizer instance = ThemeCustomizer();

@@ -42,18 +42,10 @@ post_install do |installer|
     flutter_additional_ios_build_settings(target)
 
     target.build_configurations.each do |config|
-      # Chỉ build cho arm64 iOS device (loại bỏ simulator và macOS)
-      config.build_settings['VALID_ARCHS'] = 'arm64'
-      config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64 x86_64'
-      config.build_settings['EXCLUDED_ARCHS[sdk=macosx*]'] = 'arm64 x86_64'
-
-      # Đảm bảo chỉ build active architecture trong Release
       config.build_settings['ONLY_ACTIVE_ARCH'] = 'YES'
 
-      # Tắt bitcode (Apple không còn yêu cầu từ iOS 14+)
       config.build_settings['ENABLE_BITCODE'] = 'NO'
 
-      # Tăng warning level nếu cần debug
       config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES' if config.name == 'Debug'
     end
   end

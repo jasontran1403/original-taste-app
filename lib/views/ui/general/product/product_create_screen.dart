@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_boxicons/flutter_boxicons.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:original_taste/controller/ui/general/product/product_create_controller.dart';
+import 'package:original_taste/helper/services/seller_services.dart';
 import 'package:original_taste/helper/theme/app_theme.dart';
 import 'package:original_taste/helper/utils/mixins/ui_mixins.dart';
 import 'package:original_taste/helper/utils/my_shadow.dart';
@@ -11,12 +10,12 @@ import 'package:original_taste/helper/widgets/my_card.dart';
 import 'package:original_taste/helper/widgets/my_container.dart';
 import 'package:original_taste/helper/widgets/my_flex.dart';
 import 'package:original_taste/helper/widgets/my_flex_item.dart';
-import 'package:original_taste/helper/widgets/my_list_extension.dart';
 import 'package:original_taste/helper/widgets/my_spacing.dart';
 import 'package:original_taste/helper/widgets/my_text.dart';
 import 'package:original_taste/helper/widgets/my_text_style.dart';
-import 'package:original_taste/helper/widgets/responsive.dart';
 import 'package:original_taste/views/layout/layout.dart';
+
+import '../../../../controller/ui/general/product/product_create_controller.dart';
 
 class ProductCreateScreen extends StatefulWidget {
   const ProductCreateScreen({super.key});
@@ -26,18 +25,8 @@ class ProductCreateScreen extends StatefulWidget {
 }
 
 class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin {
-  ProductCreateController controller = Get.put(ProductCreateController());
+  late ProductCreateController controller;
 
-  final Map<String, Color> colorMap = {
-    "dark": Colors.black,
-    "yellow": Colors.yellow,
-    "white": Colors.white,
-    "red": Colors.red,
-    "green": Colors.green,
-    "blue": Colors.blue,
-    "sky": Colors.lightBlue,
-    "gray": Colors.grey,
-  };
   @override
   late OutlineInputBorder outlineInputBorder;
 
@@ -45,195 +34,51 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
   void initState() {
     outlineInputBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: contentTheme.secondary.withValues(alpha: 0.4)),
+      borderSide:
+      BorderSide(color: contentTheme.secondary.withValues(alpha: 0.4)),
+    );
+    controller = Get.put(
+      ProductCreateController(),
+      tag: 'product_create_${DateTime.now().millisecondsSinceEpoch}',
     );
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    return GetBuilder(
+    return GetBuilder<ProductCreateController>(
       init: controller,
-      tag: 'product_create_controller',
       builder: (controller) {
         return Layout(
-          screenName: "CREATE PRODUCT",
-          child: MyFlex(
-            children: [
-              MyFlexItem(
-                sizes: 'xl-3 lg-6',
-                child: MyCard(
-                   shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
-                  borderRadiusAll: 12,
-                  paddingAll: 20,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyContainer(
-                        borderRadiusAll: 12,
-                        height: 314,
-                        color: contentTheme.light,
-                        child: Center(child: Image.asset('assets/product/p-1.png')),
-                      ),
-                      MySpacing.height(20),
-                      Row(
-                        children: [
-                          MyText.bodyLarge(
-                            "Men Black Slim Fit T-shirt",
-                            style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontWeight: FontWeight.w600),
-                          ),
-                          MySpacing.width(8),
-                          MyText.bodyMedium(
-                            "(Fashion)",
-                            fontWeight: 600,
-                            style: TextStyle(
-                              fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface.withAlpha(160),
-                            ),
-                          ),
-                        ],
-                      ),
-                      MySpacing.height(12),
-                      MyText.bodyMedium("Prise:", fontWeight: 600),
-                      MySpacing.height(2),
-                      Row(
-                        spacing: 12,
-                        children: [
-                          MyText.bodyLarge(
-                            "\$100",
-                            style: TextStyle(
-                              fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface.withAlpha(160),
-                              decoration: TextDecoration.lineThrough,
-                            ),
-                          ),
-                          MyText.bodyLarge("\$80", fontWeight: 700),
-                          MyText.bodySmall("(30% Off)"),
-                        ],
-                      ),
-                      MySpacing.height(12),
-                      MyText.bodyMedium("Size:", fontWeight: 600),
-                      MySpacing.height(12),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children:
-                            controller.sizes.keys.map((size) {
-                              final isSelected = controller.sizes[size]!;
-                              return MyContainer(
-                                paddingAll: 0,
-                                onTap: () => controller.toggleSize(size),
-                                width: 36,
-                                height: 36,
-                                color: isSelected ? contentTheme.dark.withValues(alpha: 0.4) : contentTheme.secondary.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.grey),
-                                alignment: Alignment.center,
-                                child: MyText.bodyMedium(size, color: isSelected ? contentTheme.onPrimary : null),
-                              );
-                            }).toList(),
-                      ),
-                      MySpacing.height(12),
-                      MyText.bodyMedium("Color:", fontWeight: 600),
-                      MySpacing.height(12),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children:
-                            controller.selectedColors.keys.map((key) {
-                              return MyContainer(
-                                onTap: () => controller.toggleColor(key),
-                                width: 36,
-                                height: 36,
-                                paddingAll: 0,
-                                color:
-                                    controller.selectedColors[key]!
-                                        ? contentTheme.dark.withValues(alpha: 0.4)
-                                        : contentTheme.secondary.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.grey),
-                                child: Center(child: Icon(Icons.circle, size: 20, color: colorMap[key])),
-                              );
-                            }).toList(),
-                      ),
-                      MySpacing.height(20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: MyContainer.bordered(
-                              onTap: () {},
-                              paddingAll: 12,
-                              borderRadiusAll: 12,
-                              borderColor: contentTheme.dark,
-                              child: Center(child: MyText.bodyMedium("Create Product")),
-                            ),
-                          ),
-                          MySpacing.width(12),
-                          Expanded(
-                            child: MyContainer(
-                              onTap: () {},
-                              paddingAll: 12,
-                              borderRadiusAll: 12,
-                              color: contentTheme.primary,
-                              child: Center(child: MyText.bodyMedium("Cancel", color: contentTheme.onPrimary)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+          screenName: 'TẠO SẢN PHẨM',
+          child: Form(
+            key: controller.formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildImageSection(),
+                  MySpacing.height(20),
+                  _buildBasicInfo(),
+                  MySpacing.height(20),
+                  _buildIngredientSection(),
+                  MySpacing.height(20),
+                  _buildPricesSection(),
+                  MySpacing.height(20),
+                  _buildActionBar(),
+                  MySpacing.height(32),
+                ],
               ),
-              MyFlexItem(
-                sizes: 'xl-9 lg-6',
-                child: Column(
-                  children: [
-                    addProductPhoto(),
-                    MySpacing.height(20),
-                    productInformation(),
-                    MySpacing.height(20),
-                    pricingDetails(),
-                    MySpacing.height(20),
-                    MyContainer(
-                      paddingAll: 20,
-                      borderRadiusAll: 12,
-                      color: contentTheme.light,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          MyContainer.bordered(
-                            onTap: () {},
-                            color: Colors.transparent,
-                            borderRadiusAll: 12,
-                            padding: MySpacing.xy(flexSpacing * 1.5, 10),
-                            borderColor: contentTheme.dark,
-                            child: MyText.bodyMedium("Create Product"),
-                          ),
-                          MySpacing.width(12),
-                          MyContainer(
-                            color: contentTheme.primary,
-                            borderRadiusAll: 12,
-                            padding: MySpacing.xy(flexSpacing * 2, 12),
-                            child: MyText.bodyMedium("Cancel", fontWeight: 600, color: contentTheme.onPrimary),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget addProductPhoto() {
+  // ── 1. Ảnh ────────────────────────────────────────────────────────
+  Widget _buildImageSection() {
     return MyCard(
-       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
+      shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
       borderRadiusAll: 12,
       paddingAll: 0,
       child: Column(
@@ -241,86 +86,36 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
         children: [
           Padding(
             padding: MySpacing.all(20),
-            child: MyText.titleMedium(
-              "Add Product Photo",
-              style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontWeight: FontWeight.w600),
-            ),
+            child: Row(children: [
+              MyText.titleMedium('Ảnh sản phẩm',
+                  style: TextStyle(
+                      fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+                      fontWeight: FontWeight.w600)),
+              if (controller.isUploading) ...[
+                MySpacing.width(12),
+                SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: contentTheme.primary)),
+                MySpacing.width(6),
+                MyText.bodySmall('Đang upload...', color: contentTheme.primary),
+              ],
+            ]),
           ),
-          Divider(height: 0),
+          const Divider(height: 0),
           Padding(
             padding: MySpacing.all(20),
-            child: MyContainer.bordered(
-              onTap: controller.pickFiles,
-              borderRadiusAll: 12,
-              width: double.infinity,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  if(controller.files.isEmpty)
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      MySpacing.height(32),
-                      Icon(Boxicons.bx_cloud_upload, size: 48, color: contentTheme.primary),
-                      MySpacing.height(32),
-                      Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
-                        children: [
-                          MyText.bodyLarge(
-                            "Drop your images here, or",
-                            style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontSize: 28),
-                          ),
-                          MyText.bodyLarge(
-                            "click to browser",
-                            style: TextStyle(
-                              fontFamily: GoogleFonts.hankenGrotesk(color: contentTheme.primary).fontFamily,
-                              color: contentTheme.primary,
-                              fontSize: 28,
-                            ),
-                          ),
-                        ],
-                      ),
-                      MySpacing.height(12),
-                      MyText.bodyMedium("1600 x 1200 (4:3) recommended. PNG, JPG and GIF files are allowed"),
-                      MySpacing.height(40),
-                    ],
-                  ),
-                  if (controller.files.isNotEmpty) ...[
-                    MySpacing.height(16),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
-                      clipBehavior: Clip.antiAliasWithSaveLayer,
-                      children:
-                          controller.files
-                              .mapIndexed(
-                                (index, file) => MyContainer.bordered(
-                                  borderRadiusAll: 12,
-                                  clipBehavior: Clip.antiAliasWithSaveLayer,
-                                  paddingAll: 20,
-                                  width: 120,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      MyContainer(
-                                        height: 44,
-                                        width: 44,
-                                        borderRadiusAll: 8,
-                                        color: contentTheme.onBackground.withAlpha(28),
-                                        paddingAll: 0,
-                                        child: Icon(controller.getFileIcon(file.name), size: 20),
-                                      ),
-                                      MySpacing.height(12),
-                                      MyText.bodyMedium(file.name, fontWeight: 700, muted: true,maxLines: 2,overflow: TextOverflow.ellipsis),
-                                    ],
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                    ),
-                  ],
-                ],
+            child: GestureDetector(
+              onTap: controller.isUploading ? null : controller.pickFiles,
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border.all(
+                      color: contentTheme.secondary.withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: _buildImageContent(),
               ),
             ),
           ),
@@ -329,304 +124,207 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
     );
   }
 
-  Widget productInformation() {
+  Widget _buildImageContent() {
+    if (controller.isUploading) {
+      return const Padding(
+          padding: EdgeInsets.all(40),
+          child: Center(child: CircularProgressIndicator()));
+    }
+    if (controller.uploadedImageUrl != null) {
+      return Stack(children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            SellerService.buildImageUrl(controller.uploadedImageUrl!),
+            height: 200,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _imagePlaceholder(),
+          ),
+        ),
+        Positioned(
+          top: 8, right: 8,
+          child: GestureDetector(
+            onTap: controller.clearImage,
+            child: Container(
+              decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20)),
+              padding: const EdgeInsets.all(4),
+              child: const Icon(Icons.close, color: Colors.white, size: 18),
+            ),
+          ),
+        ),
+      ]);
+    }
+    return _imagePlaceholder();
+  }
+
+  Widget _imagePlaceholder() => Padding(
+    padding: MySpacing.xy(0, 28),
+    child: Column(children: [
+      Icon(Icons.add_photo_alternate_outlined,
+          size: 48, color: contentTheme.primary.withValues(alpha: 0.6)),
+      MySpacing.height(10),
+      MyText.bodyMedium('Nhấn vào đây để chọn ảnh',
+          color: contentTheme.primary),
+      MySpacing.height(4),
+      MyText.bodySmall('PNG, JPG, WEBP — khuyến nghị 200×200', muted: true),
+    ]),
+  );
+
+  // ── 2. Thông tin cơ bản ───────────────────────────────────────────
+  Widget _buildBasicInfo() {
     return MyCard(
-       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
+      shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
       borderRadiusAll: 12,
       paddingAll: 0,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: MySpacing.all(20),
-            child: MyText.titleMedium(
-              "Product Information",
-              style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontWeight: FontWeight.w600),
-            ),
-          ),
-          Divider(height: 0),
+          _sectionHeader('Thông tin sản phẩm'),
+          const Divider(height: 0),
           Padding(
             padding: MySpacing.all(20),
             child: MyFlex(
               contentPadding: false,
               children: [
                 MyFlexItem(
-                  sizes: 'lg-6 md-6',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Product Name"),
-                      MySpacing.height(8),
-                      TextFormField(
-                        style: MyTextStyle.bodyMedium(),
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          disabledBorder: outlineInputBorder,
-                          contentPadding: MySpacing.all(16),
-                          isDense: true,
-                          isCollapsed: true,
-                          hintText: "Items Name",
-                          hintStyle: MyTextStyle.bodyMedium(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                MyFlexItem(
-                  sizes: 'lg-6 md-6',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Product Category"),
-                      MySpacing.height(8),
-                      Form(
-                        key: controller.formKey,
-                        child: DropdownButtonFormField<String>(
-                          dropdownColor: contentTheme.light,
-                          decoration: InputDecoration(
-                            border: outlineInputBorder,
-                            focusedErrorBorder: outlineInputBorder,
-                            errorBorder: outlineInputBorder,
-                            focusedBorder: outlineInputBorder,
-                            enabledBorder: outlineInputBorder,
-                            disabledBorder: outlineInputBorder,
-                            contentPadding: MySpacing.all(12),
-                            isDense: true,
-                            isCollapsed: true,
-                          ),
-                          hint: MyText.bodyMedium("Select Categories"),
-                          value: controller.selectedCategory,
-                          onChanged: (value) => setState(() => controller.selectedCategory = value),
-                          validator: (value) => value == null ? 'Please select a category' : null,
-                          items:
-                              controller.categories.map((category) {
-                                return DropdownMenuItem(value: category, child: MyText.bodyMedium(category));
-                              }).toList(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                MyFlexItem(
-                  sizes: 'lg-4 md-4',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Brand"),
-                      MySpacing.height(8),
-                      TextFormField(
-                        style: MyTextStyle.bodyMedium(),
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          disabledBorder: outlineInputBorder,
-                          contentPadding: MySpacing.all(16),
-                          isDense: true,
-                          isCollapsed: true,
-                          hintText: "Brand Name",
-                          hintStyle: MyTextStyle.bodyMedium(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                MyFlexItem(
-                  sizes: 'lg-4 md-4',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Weight"),
-                      MySpacing.height(8),
-                      TextFormField(
-                        style: MyTextStyle.bodyMedium(),
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          disabledBorder: outlineInputBorder,
-                          contentPadding: MySpacing.all(16),
-                          isDense: true,
-                          isCollapsed: true,
-                          hintText: "In gm & kg",
-                          hintStyle: MyTextStyle.bodyMedium(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                MyFlexItem(
-                  sizes: 'lg-4 md-4',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Gender"),
-                      MySpacing.height(8),
-                      DropdownButtonFormField<String>(
-                        dropdownColor: Colors.white,
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          contentPadding: EdgeInsets.all(12),
-                          isDense: true,
-                          isCollapsed: true,
-                        ),
-                        hint: Text("Select Gender", style: TextStyle(fontSize: 14)),
-                        value: controller.selectedGender,
-                        onChanged: (value) => setState(() => controller.selectedGender = value),
-                        validator: (value) => value == null ? 'Please select a gender' : null,
-                        items:
-                            controller.genders.map((gender) {
-                              return DropdownMenuItem(value: gender, child: Text(gender, style: TextStyle(fontSize: 14)));
-                            }).toList(),
-                      ),
-                    ],
-                  ),
-                ),
-                MyFlexItem(
-                  sizes: 'lg-4',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Size:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                      SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children:
-                            controller.availableSizes.map((size) {
-                              final isSelected = controller.selectedSizeOptions.contains(size);
-                              return MyContainer(
-                                paddingAll: 0,
-                                onTap: () => controller.toggleSizeOption(size),
-                                width: 36,
-                                height: 36,
-                                color: isSelected ? contentTheme.dark.withValues(alpha: 0.4) : contentTheme.secondary.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.grey),
-                                alignment: Alignment.center,
-                                child: MyText.bodyMedium(size, color: isSelected ? contentTheme.onPrimary : null),
-                              );
-                            }).toList(),
-                      ),
-                    ],
-                  ),
-                ),
-                MyFlexItem(
-                  sizes: 'lg-8',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Colors:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                      SizedBox(height: 10),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children:
-                            controller.availableColors.entries.map((entry) {
-                              final colorName = entry.key;
-                              final colorValue = Color(entry.value);
-                              final isSelected = controller.selectedColorOptions.contains(colorName);
-                              return MyContainer(
-                                onTap: () => controller.toggleColorOption(colorName),
-                                width: 36,
-                                height: 36,
-                                paddingAll: 0,
-                                borderRadius: BorderRadius.circular(10),
-                                color: isSelected ? contentTheme.dark.withValues(alpha: 0.4) : contentTheme.secondary.withValues(alpha: 0.2),
-                                border: Border.all(color: Colors.grey),
-                                child: Center(child: Icon(Icons.circle, size: 20, color: colorValue)),
-                              );
-                            }).toList(),
-                      ),
-                    ],
-                  ),
-                ),
-
-                MyFlexItem(
-                  child: TextFormField(
-                    maxLines: 8,
-                    style: MyTextStyle.bodyMedium(),
-                    decoration: InputDecoration(
-                      border: outlineInputBorder,
-                      focusedErrorBorder: outlineInputBorder,
-                      errorBorder: outlineInputBorder,
-                      focusedBorder: outlineInputBorder,
-                      enabledBorder: outlineInputBorder,
-                      disabledBorder: outlineInputBorder,
-                      contentPadding: MySpacing.all(16),
-                      isDense: true,
-                      isCollapsed: true,
-                      hintText: "Short description about product",
-                      hintStyle: MyTextStyle.bodyMedium(),
+                  child: _field('Tên sản phẩm *',
+                    TextFormField(
+                      controller: controller.nameController,
+                      style: MyTextStyle.bodyMedium(),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Vui lòng nhập tên'
+                          : null,
+                      decoration: _inputDeco('Nhập tên sản phẩm...'),
                     ),
                   ),
                 ),
                 MyFlexItem(
                   sizes: 'lg-4',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Tag Number"),
-                      MySpacing.height(8),
-                      TextFormField(
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        style: MyTextStyle.bodyMedium(),
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          disabledBorder: outlineInputBorder,
-                          contentPadding: MySpacing.all(16),
-                          isDense: true,
-                          isCollapsed: true,
-                          hintText: "Short description about product",
-                          hintStyle: MyTextStyle.bodyMedium(),
-                        ),
-                      ),
-                    ],
+                  child: _field('Danh mục',
+                    controller.isLoadingData
+                        ? const LinearProgressIndicator()
+                        : DropdownButtonFormField<CategoryModel>(
+                      dropdownColor: contentTheme.light,
+                      decoration: _inputDeco('Chọn danh mục'),
+                      value: controller.selectedCategory,
+                      onChanged: (v) {
+                        controller.selectedCategory = v;
+                        controller.update();
+                      },
+                      items: controller.categories
+                          .map((c) => DropdownMenuItem(
+                        value: c,
+                        child: MyText.bodyMedium(c.name),
+                      ))
+                          .toList(),
+                    ),
                   ),
                 ),
                 MyFlexItem(
                   sizes: 'lg-4',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Stock"),
-                      MySpacing.height(8),
-                      TextFormField(
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        style: MyTextStyle.bodyMedium(),
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          disabledBorder: outlineInputBorder,
-                          contentPadding: MySpacing.all(16),
-                          isDense: true,
-                          isCollapsed: true,
-                          hintText: "Quality",
-                          hintStyle: MyTextStyle.bodyMedium(),
-                        ),
+                  child: _field('Đơn vị',
+                    Container(
+                      padding: MySpacing.all(14),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                            color: contentTheme.secondary.withValues(alpha: 0.4)),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    ],
+                      child: Row(children: [
+                        Icon(Icons.scale_outlined,
+                            size: 18, color: contentTheme.secondary),
+                        MySpacing.width(8),
+                        MyText.bodyMedium('kg', fontWeight: 600),
+                        MySpacing.width(6),
+                        MyText.bodySmall('(cố định)', muted: true),
+                      ]),
+                    ),
+                  ),
+                ),
+                MyFlexItem(
+                  sizes: 'lg-4',
+                  child: _field('Thuế VAT (%)',
+                    Theme(
+                      data: Theme.of(context).copyWith(
+                        canvasColor: contentTheme.light,
+                        shadowColor: contentTheme.primary.withOpacity(0.2),
+                        splashColor: contentTheme.primary.withOpacity(0.1),
+                        highlightColor: contentTheme.primary.withOpacity(0.05),
+                      ),
+                      child: DropdownButtonFormField<int>(
+                        value: controller.selectedVatRate,
+                        isExpanded: true,
+                        hint: MyText.bodyMedium('Chọn mức VAT', muted: true),
+                        decoration: _inputDeco('').copyWith(
+                          filled: true,
+                          fillColor: contentTheme.light,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: contentTheme.secondary.withOpacity(0.3)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: contentTheme.secondary.withOpacity(0.3)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: contentTheme.primary, width: 1.5),
+                          ),
+                        ),
+                        icon: Icon(
+                          Icons.arrow_drop_down_rounded,
+                          color: contentTheme.primary,
+                          size: 28,
+                        ),
+                        dropdownColor: contentTheme.light,
+                        borderRadius: BorderRadius.circular(12),
+                        elevation: 4,
+                        items: [0, 5, 8, 10].map((rate) {
+                          final isSelected = rate == controller.selectedVatRate;
+                          return DropdownMenuItem<int>(
+                            value: rate,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(vertical: 2, horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: isSelected ? contentTheme.primary.withOpacity(0.15) : null,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  MyText.bodyMedium(
+                                    '$rate%',
+                                    color: isSelected ? contentTheme.primary : contentTheme.dark,
+                                  ),
+                                  if (isSelected)
+                                    Icon(Icons.check_circle, size: 18, color: contentTheme.primary),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            controller.selectedVatRate = value;
+                            controller.update();
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                MyFlexItem(
+                  child: _field('Mô tả (tuỳ chọn)',
+                    TextFormField(
+                      controller: controller.descriptionController,
+                      maxLines: 3,
+                      style: MyTextStyle.bodyMedium(),
+                      decoration: _inputDeco('Mô tả ngắn về sản phẩm...'),
+                    ),
                   ),
                 ),
               ],
@@ -637,9 +335,10 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
     );
   }
 
-  Widget pricingDetails() {
+  // ── 3. Nguyên liệu ────────────────────────────────────────────────
+  Widget _buildIngredientSection() {
     return MyCard(
-       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
+      shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
       borderRadiusAll: 12,
       paddingAll: 0,
       child: Column(
@@ -647,125 +346,82 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
         children: [
           Padding(
             padding: MySpacing.all(20),
-            child: MyText.titleMedium(
-              "Pricing Details",
-              style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontWeight: FontWeight.w600),
-            ),
+            child: Row(children: [
+              MyText.titleMedium('Nguyên liệu *',
+                  style: TextStyle(
+                      fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+                      fontWeight: FontWeight.w600)),
+              MySpacing.width(8),
+              Container(
+                padding: MySpacing.xy(8, 4),
+                decoration: BoxDecoration(
+                  color: contentTheme.warning.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: MyText.bodySmall('Bắt buộc chọn 1',
+                    color: contentTheme.warning, fontWeight: 600),
+              ),
+            ]),
           ),
-          Divider(height: 0),
+          const Divider(height: 0),
           Padding(
             padding: MySpacing.all(20),
-            child: MyFlex(
-              contentPadding: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                MyFlexItem(
-                  sizes: 'lg-4',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Price"),
-                      MySpacing.height(8),
-                      TextFormField(
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          disabledBorder: outlineInputBorder,
-                          contentPadding: MySpacing.all(16),
-                          prefixIcon: MyContainer.bordered(
-                            margin: MySpacing.right(12),
-                            paddingAll: 0,
-                            borderColor: contentTheme.secondary.withValues(alpha: 0.1),
-                            alignment: Alignment.center,
-                            color: contentTheme.secondary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.horizontal(left: Radius.circular(8)),
-                            border: Border(right: BorderSide(color: contentTheme.secondary.withValues(alpha: 0.1))),
-                            child: Icon(Boxicons.bx_dollar, color: contentTheme.secondary),
-                          ),
-                          prefixIconConstraints: BoxConstraints(maxHeight: 42, minWidth: 50, maxWidth: 50),
-                          isDense: true,
-                          isCollapsed: true,
-                          hintText: "000",
-                          hintStyle: MyTextStyle.bodyMedium(),
+                MyText.bodyMedium('Chọn nguyên liệu *'),
+                MySpacing.height(8),
+                controller.isLoadingData
+                    ? const LinearProgressIndicator()
+                    : DropdownButtonFormField<IngredientModel>(
+                  dropdownColor: contentTheme.light,
+                  decoration: _inputDeco('Chọn nguyên liệu...'),
+                  value: controller.selectedIngredient,
+                  isExpanded: true,
+                  onChanged: (v) {
+                    controller.selectedIngredient = v;
+                    controller.update();
+                  },
+                  items: controller.ingredientOptions
+                      .map((ing) => DropdownMenuItem(
+                    value: ing,
+                    child: Row(children: [
+                      Flexible(
+                          child: MyText.bodyMedium(ing.name,
+                              overflow: TextOverflow.ellipsis)),
+                      MySpacing.width(8),
+                      MyText.bodySmall(
+                          '(tồn: ${ing.stockQuantity.toStringAsFixed(2)} ${ing.unit})',
+                          muted: true),
+                    ]),
+                  ))
+                      .toList(),
+                ),
+
+                // Thông tin nguyên liệu đã chọn
+                if (controller.selectedIngredient != null) ...[
+                  MySpacing.height(12),
+                  Container(
+                    padding: MySpacing.all(12),
+                    decoration: BoxDecoration(
+                      color: contentTheme.primary.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(children: [
+                      Icon(Icons.info_outline,
+                          size: 16, color: contentTheme.primary),
+                      MySpacing.width(8),
+                      Expanded(
+                        child: MyText.bodySmall(
+                          '${controller.selectedIngredient!.name} '
+                              '— Tồn kho: ${controller.selectedIngredient!.stockQuantity.toStringAsFixed(2)} ${controller.selectedIngredient!.unit}. '
+                              'Mỗi đơn vị sản phẩm bán ra sẽ trừ 1 ${controller.selectedIngredient!.unit} nguyên liệu.',
+                          color: contentTheme.primary,
                         ),
                       ),
-                    ],
+                    ]),
                   ),
-                ),
-                MyFlexItem(
-                  sizes: 'lg-4',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Discount"),
-                      MySpacing.height(8),
-                      TextFormField(
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          disabledBorder: outlineInputBorder,
-                          contentPadding: MySpacing.all(16),
-                          prefixIcon: MyContainer.bordered(
-                            margin: MySpacing.right(12),
-                            paddingAll: 0,
-                            borderColor: contentTheme.secondary.withValues(alpha: 0.1),
-                            alignment: Alignment.center,
-                            color: contentTheme.secondary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.horizontal(left: Radius.circular(8)),
-                            border: Border(right: BorderSide(color: contentTheme.secondary.withValues(alpha: 0.1))),
-                            child: Icon(Boxicons.bxs_discount, color: contentTheme.secondary),
-                          ),
-                          prefixIconConstraints: BoxConstraints(maxHeight: 42, minWidth: 50, maxWidth: 50),
-                          isDense: true,
-                          isCollapsed: true,
-                          hintText: "000",
-                          hintStyle: MyTextStyle.bodyMedium(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                MyFlexItem(
-                  sizes: 'lg-4',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Tex"),
-                      MySpacing.height(8),
-                      TextFormField(
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          disabledBorder: outlineInputBorder,
-                          contentPadding: MySpacing.all(16),
-                          prefixIcon: MyContainer.bordered(
-                            margin: MySpacing.right(12),
-                            paddingAll: 0,
-                            borderColor: contentTheme.secondary.withValues(alpha: 0.1),
-                            alignment: Alignment.center,
-                            color: contentTheme.secondary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.horizontal(left: Radius.circular(8)),
-                            border: Border(right: BorderSide(color: contentTheme.secondary.withValues(alpha: 0.1))),
-                            child: Icon(Boxicons.bxs_file, color: contentTheme.secondary),
-                          ),
-                          prefixIconConstraints: BoxConstraints(maxHeight: 42, minWidth: 50, maxWidth: 50),
-                          isDense: true,
-                          isCollapsed: true,
-                          hintText: "000",
-                          hintStyle: MyTextStyle.bodyMedium(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                ],
               ],
             ),
           ),
@@ -773,4 +429,189 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
       ),
     );
   }
+
+  // ── 4. Mức giá ────────────────────────────────────────────────────
+  Widget _buildPricesSection() {
+    return MyCard(
+      shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
+      borderRadiusAll: 12,
+      paddingAll: 0,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: MySpacing.all(20),
+            child: Row(children: [
+              Expanded(
+                child: MyText.titleMedium('Mức giá *',
+                    style: TextStyle(
+                        fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+                        fontWeight: FontWeight.w600)),
+              ),
+              GestureDetector(
+                onTap: controller.addPrice,
+                child: Container(
+                  padding: MySpacing.xy(12, 8),
+                  decoration: BoxDecoration(
+                    color: contentTheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.add, size: 16, color: contentTheme.primary),
+                    MySpacing.width(4),
+                    MyText.bodySmall('Thêm giá',
+                        color: contentTheme.primary, fontWeight: 600),
+                  ]),
+                ),
+              ),
+            ]),
+          ),
+          const Divider(height: 0),
+          Padding(
+            padding: MySpacing.all(20),
+            child: Column(
+              children: [
+                ...List.generate(
+                    controller.prices.length, (i) => _buildPriceRow(i)),
+                MySpacing.height(6),
+                MyText.bodySmall('* Chọn radio để đặt làm giá mặc định',
+                    muted: true),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPriceRow(int index) {
+    final item = controller.prices[index];
+    final defaultIndex = controller.prices.indexWhere((p) => p.isDefault);
+    return Padding(
+      padding: MySpacing.bottom(12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Radio<int>(
+            value: index,
+            groupValue: defaultIndex,
+            activeColor: contentTheme.primary,
+            visualDensity: VisualDensity.compact,
+            onChanged: (_) => controller.setDefaultPrice(index),
+          ),
+          MySpacing.width(4),
+          Expanded(
+            flex: 2,
+            child: TextFormField(
+              controller: item.nameController,
+              style: MyTextStyle.bodyMedium(),
+              decoration: _inputDeco('Tên giá (vd: Mặc định, Sale...)'),
+            ),
+          ),
+          MySpacing.width(10),
+          Expanded(
+            flex: 2,
+            child: TextFormField(
+              controller: item.priceController,
+              keyboardType:
+              const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(
+                    RegExp(r'^\d*\.?\d{0,0}')),
+              ],
+              style: MyTextStyle.bodyMedium(),
+              decoration: _inputDeco('Giá (đ)').copyWith(
+                prefixIcon: Icon(Icons.attach_money,
+                    size: 18, color: contentTheme.secondary),
+                prefixIconConstraints:
+                const BoxConstraints(minWidth: 38, maxWidth: 38),
+              ),
+            ),
+          ),
+          MySpacing.width(8),
+          GestureDetector(
+            onTap: () => controller.removePrice(index),
+            child: Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: contentTheme.danger.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.close, size: 16, color: contentTheme.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 5. Action bar ─────────────────────────────────────────────────
+  Widget _buildActionBar() {
+    return Container(
+      padding: MySpacing.all(20),
+      decoration: BoxDecoration(
+        color: contentTheme.light,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          MyContainer.bordered(
+            onTap: () => Get.back(),
+            color: Colors.transparent,
+            borderRadiusAll: 12,
+            padding: MySpacing.xy(24, 10),
+            borderColor: contentTheme.dark,
+            child: MyText.bodyMedium('Hủy'),
+          ),
+          MySpacing.width(12),
+          MyContainer(
+            onTap: controller.isSaving ? null : controller.save,
+            color: contentTheme.primary,
+            borderRadiusAll: 12,
+            padding: MySpacing.xy(24, 12),
+            child: controller.isSaving
+                ? SizedBox(
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: contentTheme.onPrimary))
+                : MyText.bodyMedium('Lưu sản phẩm',
+                fontWeight: 600, color: contentTheme.onPrimary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _field(String label, Widget child) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      MyText.bodyMedium(label),
+      MySpacing.height(8),
+      child,
+    ],
+  );
+
+  Widget _sectionHeader(String title) => Padding(
+    padding: MySpacing.all(20),
+    child: MyText.titleMedium(title,
+        style: TextStyle(
+            fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+            fontWeight: FontWeight.w600)),
+  );
+
+  InputDecoration _inputDeco(String hint) => InputDecoration(
+    border: outlineInputBorder,
+    focusedBorder: outlineInputBorder,
+    enabledBorder: outlineInputBorder,
+    errorBorder: outlineInputBorder,
+    focusedErrorBorder: outlineInputBorder,
+    disabledBorder: outlineInputBorder,
+    contentPadding: MySpacing.all(14),
+    isDense: true,
+    isCollapsed: true,
+    hintText: hint,
+    hintStyle: MyTextStyle.bodyMedium(muted: true),
+  );
 }

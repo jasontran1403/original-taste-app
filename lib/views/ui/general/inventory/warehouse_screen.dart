@@ -16,14 +16,14 @@ import 'package:original_taste/helper/widgets/my_text.dart';
 import 'package:original_taste/views/layout/layout.dart';
 import 'package:original_taste/views/ui/general/inventory/import_warehouse_screen.dart';
 
-class WarehouseScreen extends StatefulWidget {
-  const WarehouseScreen({super.key});
+class InventoryImportScreen extends StatefulWidget {
+  const InventoryImportScreen({super.key});
 
   @override
-  State<WarehouseScreen> createState() => _WarehouseScreenState();
+  State<InventoryImportScreen> createState() => _InventoryImportScreenState();
 }
 
-class _WarehouseScreenState extends State<WarehouseScreen> with UIMixin {
+class _InventoryImportScreenState extends State<InventoryImportScreen> with UIMixin {
   WarehouseController controller = Get.put(WarehouseController());
   @override
   Widget build(BuildContext context) {

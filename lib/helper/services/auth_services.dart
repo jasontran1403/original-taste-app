@@ -159,6 +159,13 @@ class AuthService {
     await SessionStorage.clearSession();
     isLoggedIn = false;
     currentRole = null;
+
+    // ✅ Xóa toàn bộ GetX controllers để tránh deactivated widget ancestor
+    Get.deleteAll(force: true);
+
+    // ✅ Đợi frame hiện tại xong rồi mới navigate
+    await Future.delayed(const Duration(milliseconds: 100));
+
     Get.offAllNamed(AppRoutes.signIn);
   }
 

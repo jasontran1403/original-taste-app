@@ -1,135 +1,217 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:original_taste/controller/my_controller.dart';
-import 'package:remixicon/remixicon.dart';
+import 'package:get/get.dart';
+import 'package:original_taste/helper/services/seller_services.dart';
 
-class ProductCreateController extends MyController {
+// ── Giá item trong form ───────────────────────────────────────────
+class PriceFormItem {
+  final TextEditingController nameController;
+  final TextEditingController priceController;
+  bool isDefault;
+
+  PriceFormItem({
+    String name = '',
+    String price = '',
+    this.isDefault = false,
+  })  : nameController = TextEditingController(text: name),
+        priceController = TextEditingController(text: price);
+
+  void dispose() {
+    nameController.dispose();
+    priceController.dispose();
+  }
+
+  bool get isValid =>
+      nameController.text.trim().isNotEmpty &&
+          priceController.text.trim().isNotEmpty &&
+          (double.tryParse(priceController.text.trim()) ?? -1) >= 0;
+}
+
+class ProductCreateController extends GetxController {
   final formKey = GlobalKey<FormState>();
 
-  String? selectedCategory;
-  String? selectedGender;
+  int selectedVatRate = 0;
 
-  final List<String> categories = [
-    'Fashion',
-    'Electronics',
-    'Footwear',
-    'Sportswear',
-    'Watches',
-    'Furniture',
-    'Appliances',
-    'Headphones',
-    'Other Accessories',
-  ];
+  final nameController = TextEditingController();
+  final descriptionController = TextEditingController();
 
-  final List<String> genders = ['Male', 'Female', 'Other'];
+  List<CategoryModel> categories = [];
+  CategoryModel? selectedCategory;
 
-  var sizes = <String, bool>{
-    'S': false,
-    'M': false,
-    'XL': false,
-    'XXL': false,
-  };
+  List<PlatformFile> files = [];
+  String? uploadedImageUrl;
+  bool isUploading = false;
 
-  var selectedColors = <String, bool>{
-    "dark": false,
-    "yellow": false,
-    "white": false,
-    "red": false,
-    "green": false,
-    "blue": false,
-    "sky": false,
-    "gray": false,
-  };
+  // Ingredient bắt buộc chọn 1.
+  // quantity = 1.0 cố định: bán 1 đơn vị sản phẩm thì trừ 1 kg nguyên liệu
+  List<IngredientModel> ingredientOptions = [];
+  IngredientModel? selectedIngredient;
 
-  final List<String> availableSizes = ['XS', 'S', 'M', 'XL', 'XXL', '3XL'];
-  final List<String> selectedSizeOptions = [];
+  List<PriceFormItem> prices = [];
 
-  final Map<String, int> availableColors = {
-    'Dark': 0xFF000000,
-    'Yellow': 0xFFFFC107,
-    'White': 0xFFFFFFFF,
-    'Red': 0xFFF44336,
-    'Green': 0xFF4CAF50,
-    'Blue': 0xFF2196F3,
-    'Sky': 0xFF03A9F4,
-    'Gray': 0xFF9E9E9E,
-  };
-  final List<String> selectedColorOptions = [];
+  bool isSaving = false;
+  bool isLoadingData = false;
 
-  void toggleSizeOption(String size) {
-    if (selectedSizeOptions.contains(size)) {
-      selectedSizeOptions.remove(size);
-    } else {
-      selectedSizeOptions.add(size);
+  @override
+  void onInit() {
+    super.onInit();
+    prices.add(PriceFormItem(name: 'Mặc định', isDefault: true));
+    _loadInitialData();
+  }
+
+  @override
+  void onClose() {
+    nameController.dispose();
+    descriptionController.dispose();
+    for (final p in prices) p.dispose();
+    super.onClose();
+  }
+
+  Future<void> _loadInitialData() async {
+    isLoadingData = true;
+    update();
+    final catResult = await SellerService.getCategories();
+    if (catResult.isSuccess && catResult.data != null) {
+      categories = catResult.data!;
     }
-    update();
-  }
-
-  void toggleColorOption(String color) {
-    if (selectedColorOptions.contains(color)) {
-      selectedColorOptions.remove(color);
-    } else {
-      selectedColorOptions.add(color);
+    final ingResult = await SellerService.getIngredients();
+    if (ingResult.isSuccess && ingResult.data != null) {
+      ingredientOptions = ingResult.data!;
     }
+    isLoadingData = false;
     update();
   }
-
-  void toggleColor(String key) {
-    selectedColors[key] = !selectedColors[key]!;
-    update();
-  }
-
-  void toggleSize(String size) {
-    sizes[size] = !(sizes[size] ?? false);
-    update();
-  }
-
-  final List<PlatformFile> files = [];
-  bool selectMultipleFile = false;
-  FileType fileType = FileType.any;
 
   Future<void> pickFiles() async {
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: selectMultipleFile,
-      type: fileType,
-    );
-
-    if (result?.files.isNotEmpty ?? false) {
-      files.addAll(result!.files);
+    final result = await FilePicker.platform
+        .pickFiles(type: FileType.image, allowMultiple: false);
+    if (result != null && result.files.isNotEmpty) {
+      files = result.files;
       update();
+      await _uploadImage(result.files.first);
     }
   }
 
-
-  IconData getFileIcon(String fileName) {
-    final ext = _getFileExtension(fileName);
-
-    if (_imageExtensions.contains(ext)) return RemixIcons.image_2_line;
-    if (_pdfExtensions.contains(ext)) return RemixIcons.file_pdf_line;
-    if (_wordExtensions.contains(ext)) return RemixIcons.file_word_2_line;
-    if (_excelExtensions.contains(ext)) return RemixIcons.file_excel_2_line;
-    if (_pptExtensions.contains(ext)) return RemixIcons.file_ppt_2_line;
-    if (_textExtensions.contains(ext)) return RemixIcons.file_text_line;
-    if (_archiveExtensions.contains(ext)) return RemixIcons.file_zip_line;
-    if (_videoExtensions.contains(ext)) return RemixIcons.film_line;
-    if (_audioExtensions.contains(ext)) return RemixIcons.music_line;
-    if (_codeExtensions.contains(ext)) return RemixIcons.code_line;
-
-    return RemixIcons.file_line;
+  Future<void> _uploadImage(PlatformFile file) async {
+    if (file.path == null) return;
+    isUploading = true;
+    update();
+    final result = await SellerService.uploadProductImage(file.path!);
+    if (result.isSuccess && result.data != null) {
+      uploadedImageUrl = result.data;
+    } else {
+      Get.snackbar('Lỗi upload', result.message ?? 'Không thể upload',
+          backgroundColor: Colors.red, colorText: Colors.white);
+    }
+    isUploading = false;
+    update();
   }
 
-  String _getFileExtension(String fileName) {
-    return fileName.split('.').last.toLowerCase();
+  void clearImage() {
+    uploadedImageUrl = null;
+    files = [];
+    update();
   }
 
-  static const List<String> _imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'];
-  static const List<String> _pdfExtensions = ['pdf'];
-  static const List<String> _wordExtensions = ['doc', 'docx'];
-  static const List<String> _excelExtensions = ['xls', 'xlsx'];
-  static const List<String> _pptExtensions = ['ppt', 'pptx'];
-  static const List<String> _textExtensions = ['txt', 'md'];
-  static const List<String> _archiveExtensions = ['zip', 'rar', '7z', 'tar', 'gz'];
-  static const List<String> _videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
-  static const List<String> _audioExtensions = ['mp3', 'wav', 'flac', 'aac'];
-  static const List<String> _codeExtensions = ['html', 'css', 'js', 'json', 'xml', 'dart', 'py', 'java', 'ts'];
+  void addPrice() {
+    prices.add(PriceFormItem());
+    update();
+  }
+
+  void removePrice(int index) {
+    if (prices.length <= 1) {
+      Get.snackbar('Lưu ý', 'Sản phẩm phải có ít nhất 1 mức giá',
+          backgroundColor: Colors.orange, colorText: Colors.white);
+      return;
+    }
+    final wasDefault = prices[index].isDefault;
+    prices[index].dispose();
+    prices.removeAt(index);
+    if (wasDefault && prices.isNotEmpty) prices[0].isDefault = true;
+    update();
+  }
+
+  void setDefaultPrice(int index) {
+    for (int i = 0; i < prices.length; i++) {
+      prices[i].isDefault = (i == index);
+    }
+    update();
+  }
+
+  String? _validate() {
+    if (nameController.text.trim().isEmpty) return 'Vui lòng nhập tên sản phẩm';
+    if (selectedIngredient == null) return 'Vui lòng chọn nguyên liệu';
+    if (prices.isEmpty) return 'Vui lòng thêm ít nhất 1 mức giá';
+    for (int i = 0; i < prices.length; i++) {
+      if (!prices[i].isValid)
+        return 'Mức giá ${i + 1}: vui lòng nhập đầy đủ tên và giá';
+    }
+    if (!prices.any((p) => p.isDefault))
+      return 'Vui lòng chọn 1 mức giá mặc định';
+    return null;
+  }
+
+  Future<void> save() async {
+    final err = _validate();
+    if (err != null) {
+      Get.snackbar('Thiếu thông tin', err,
+          backgroundColor: Colors.orange, colorText: Colors.white);
+      return;
+    }
+    if (isUploading) {
+      Get.snackbar('Chờ', 'Đang upload ảnh...',
+          backgroundColor: Colors.orange, colorText: Colors.white);
+      return;
+    }
+
+    isSaving = true;
+    update();
+
+    try {
+      final result = await SellerService.createProduct(
+        name: nameController.text.trim(),
+        description: descriptionController.text.trim().isEmpty
+            ? null
+            : descriptionController.text.trim(),
+        unit: 'kg',
+        imageUrl: uploadedImageUrl,
+        categoryId: selectedCategory?.id,
+        categoryName: selectedCategory?.name,
+        prices: prices
+            .map((p) => {
+          'priceName': p.nameController.text.trim(),
+          'price': double.parse(p.priceController.text.trim()),
+          'isDefault': p.isDefault,
+        })
+            .toList(),
+        ingredients: [
+          {'ingredientId': selectedIngredient!.id, 'quantity': 1.0}
+        ],
+        vatRate: selectedVatRate,  // ← THÊM DÒNG NÀY (gửi lên backend)
+      );
+
+      isSaving = false;
+      update();
+
+      if (result.isSuccess) {
+        Get.snackbar('Thành công', 'Đã tạo sản phẩm "${nameController.text}"',
+            backgroundColor: Colors.green, colorText: Colors.white);
+        Get.back(result: true);
+      } else {
+        Get.snackbar('Lỗi', result.message ?? 'Không thể tạo sản phẩm',
+            backgroundColor: Colors.red, colorText: Colors.white);
+      }
+    } catch (e) {
+      isSaving = false;
+      update();
+      Get.snackbar('Lỗi', 'Không thể tạo sản phẩm: $e',
+          backgroundColor: Colors.red, colorText: Colors.white);
+    }
+  }
+
+  IconData getFileIcon(String name) {
+    final ext = name.split('.').last.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(ext)) return Icons.image;
+    return Icons.insert_drive_file;
+  }
 }

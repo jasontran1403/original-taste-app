@@ -961,6 +961,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
   final _descCtrl  = TextEditingController();
   final _priceCtrl = TextEditingController();
   final _vatCtrl   = TextEditingController();
+  int _vatPercent = 0;
   PosCategoryModel? _selectedCat;
   bool _isActive = true, _loading = false;
   bool _isShopeeFood = false, _isGrabFood = false;
@@ -1081,7 +1082,6 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
       _nameCtrl.text  = e.name;
       _descCtrl.text  = e.description ?? '';
       _priceCtrl.text = e.basePrice.toStringAsFixed(0);
-      _vatCtrl.text   = e.vatPercent.toString();
       _isActive = e.isActive; _isShopeeFood = e.isShopeeFood; _isGrabFood = e.isGrabFood;
       final shopeeMenu = e.appMenus.where((m) => m.platform == 'SHOPEE_FOOD' && m.isActive).firstOrNull;
       final grabMenu   = e.appMenus.where((m) => m.platform == 'GRAB_FOOD'   && m.isActive).firstOrNull;
@@ -1168,7 +1168,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
             name: _nameCtrl.text.trim(), categoryId: _selectedCat!.id, basePrice: price,
             description: _descCtrl.text.trim().isNotEmpty ? _descCtrl.text.trim() : null,
             isActive: _isActive, imageUrl: imageUrl,
-            vatPercent: int.tryParse(_vatCtrl.text.trim()) ?? 0,
+            vatPercent: _vatPercent,
             isShopeeFood: _isShopeeFood, isGrabFood: _isGrabFood,
             shopeePrice: _isShopeeFood ? double.tryParse(_shopeePriceCtrl.text.replaceAll(',', '')) : null,
             grabPrice: _isGrabFood ? double.tryParse(_grabPriceCtrl.text.replaceAll(',', '')) : null);
@@ -1178,7 +1178,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
             name: _nameCtrl.text.trim(), categoryId: _selectedCat!.id, basePrice: price,
             description: _descCtrl.text.trim().isNotEmpty ? _descCtrl.text.trim() : null,
             imageUrl: imageUrl, displayOrder: widget.nextOrder,
-            vatPercent: int.tryParse(_vatCtrl.text.trim()) ?? 0,
+            vatPercent: _vatPercent,
             isShopeeFood: _isShopeeFood, isGrabFood: _isGrabFood,
             shopeePrice: _isShopeeFood ? double.tryParse(_shopeePriceCtrl.text.replaceAll(',', '')) : null,
             grabPrice: _isGrabFood ? double.tryParse(_grabPriceCtrl.text.replaceAll(',', '')) : null);
@@ -1250,7 +1250,26 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly], suffixText: 'đ'),
         const SizedBox(height: 12),
-        _Field(ctrl: _vatCtrl, label: 'Thuế VAT (%)', hint: '0', keyboardType: TextInputType.number),
+        DropdownButtonFormField<int>(
+          value: _vatPercent,
+          decoration: InputDecoration(
+            labelText: 'Thuế VAT (%)',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          ),
+          items: const [
+            DropdownMenuItem(value: 0, child: Text('0% - Không chịu thuế')),
+            DropdownMenuItem(value: 5, child: Text('5%')),
+            DropdownMenuItem(value: 8, child: Text('8%')),
+            DropdownMenuItem(value: 10, child: Text('10%')),
+          ],
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => _vatPercent = value);
+            }
+          },
+        ),
         const SizedBox(height: 12),
         DropdownButtonFormField<PosCategoryModel>(
           value: _selectedCat,

@@ -4,17 +4,8 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:original_taste/helper/services/pos_service.dart';
+import 'package:original_taste/views/ui/components/%20extended_ui/pos/import_stock_screen.dart';
 import 'package:original_taste/views/ui/components/%20extended_ui/pos/shift_screen.dart';
-
-bool isFullAutoVariant(PosVariantModel v) {
-  if (v.isAddonGroup) return false;
-  if (v.ingredients.isEmpty) return false;
-  if (v.ingredients.any((i) => (i.maxSelectableCount ?? 0) <= 0)) return false;
-  final totalRequired = v.ingredients.fold(0, (s, i) => s + (i.maxSelectableCount ?? 0));
-  return v.minSelect > 0 &&
-      v.minSelect == v.maxSelect &&
-      v.minSelect == totalRequired;
-}
 
 class PosComponents extends StatefulWidget {
   const PosComponents({super.key});
@@ -107,7 +98,6 @@ class _PosComponentsState extends State<PosComponents> {
             final aOrder = a.displayOrder == 0 ? 999999 : a.displayOrder;
             final bOrder = b.displayOrder == 0 ? 999999 : b.displayOrder;
             final cmp = aOrder.compareTo(bOrder);
-
             return cmp != 0 ? cmp : a.name.compareTo(b.name);
           });
         });
@@ -143,77 +133,39 @@ class _PosComponentsState extends State<PosComponents> {
     );
   }
 
-  PosVariantModel? _getDefaultRegularVariant(PosProductModel product) {
-    final regularVariants = product.variants.where((v) => !v.isAddonGroup).toList();
-    if (regularVariants.isEmpty) {
-      return null;
-    }
+  // ══════════════════════════════════════════════════════════════
+  // QUICK ADD LOGIC
+  // ══════════════════════════════════════════════════════════════
 
-    // Ưu tiên isDefault = true
-    final defaultVariant = regularVariants.firstWhere(
-          (v) => v.isDefault == true,
-      orElse: () {
-        return regularVariants.first; // tạm fallback để debug
-      },
-    );
-
-    // Kiểm tra full-auto fallback
-    if (!isFullAutoVariant(defaultVariant)) {
-      final firstFullAuto = regularVariants.firstWhere(
-        isFullAutoVariant,
-        orElse: () {
-          return regularVariants.first;
-        },
-      );
-      return firstFullAuto;
-    }
-
-    return defaultVariant;
+  /// Full-auto variant: tất cả NL có maxSelectableCount > 0
+  /// VÀ SUM(maxSelectableCount) == minSelect == maxSelect
+  bool _isFullAutoVariant(PosVariantModel v) {
+    if (v.isAddonGroup) return false;
+    if (v.ingredients.isEmpty) return false;
+    if (v.ingredients.any((i) => (i.maxSelectableCount ?? 0) <= 0)) return false;
+    final totalRequired = v.ingredients.fold(0, (s, i) => s + (i.maxSelectableCount ?? 0));
+    return v.minSelect > 0 &&
+        v.minSelect == v.maxSelect &&
+        v.minSelect == totalRequired;
   }
 
-  /// Tự động chọn default variant và điền sẵn selectedIngredients
-  /// - Ưu tiên variant có isDefault = true
-  /// - Nếu không có → chọn variant đầu tiên (sắp xếp displayOrder)
-  /// - Điền selectedIngredients theo maxSelectableCount của từng nguyên liệu
-  VariantGroupSelection _autoSelectRegularVariant(PosProductModel product) {
-    final regularVariants = product.variants
-        .where((v) => !v.isAddonGroup)
-        .toList()
-      ..sort((a, b) {
-        final aOrder = a.displayOrder ?? 999999;
-        final bOrder = b.displayOrder ?? 999999;
-        return aOrder.compareTo(bOrder);
-      });
+  /// Lấy "default variant" để quick-add:
+  /// - Nếu chỉ có 1 regular variant → đó là default
+  /// - Nếu có nhiều → dùng variant có isDefault = true (khi field đó tồn tại)
+  ///   hoặc variant đầu tiên là full-auto
+  /// Trả về null nếu không thể xác định default (cần user chọn thủ công)
+  PosVariantModel? _getDefaultRegularVariant(PosProductModel product) {
+    final regularGroups = product.variants.where((v) => !v.isAddonGroup).toList();
+    if (regularGroups.isEmpty) return null;
 
-    if (regularVariants.isEmpty) {
-      return VariantGroupSelection(
-        variantId: 0,
-        groupName: '',
-        isAddonGroup: false,
-        selectedIngredients: {},
-        addonItems: null,
-      );
-    }
+    // Chỉ 1 variant → đó là default
+    if (regularGroups.length == 1) return regularGroups.first;
 
-    // Ưu tiên default
-    PosVariantModel selected = regularVariants.firstWhere(
-          (v) => v.isDefault == true,
-      orElse: () => regularVariants.first,
-    );
-
-    // Điền sẵn selectedIngredients
-    final Map<int, int> preSelected = {
-      for (final ing in selected.ingredients)
-        ing.ingredientId: ing.maxSelectableCount ?? 1,
-    };
-
-    return VariantGroupSelection(
-      variantId: selected.id,
-      groupName: selected.groupName,
-      isAddonGroup: false,
-      selectedIngredients: preSelected,
-      addonItems: null,
-    );
+    // Nhiều variant: tìm cái có isDefault == true (field sẽ thêm sau)
+    // Tạm thời: dùng cái đầu tiên là full-auto (nếu có)
+    // TODO: thay bằng: regularGroups.where((v) => v.isDefault).firstOrNull
+    final firstFullAuto = regularGroups.where(_isFullAutoVariant).firstOrNull;
+    return firstFullAuto; // null nếu không có full-auto nào
   }
 
   /// Kiểm tra có thể quick-add không:
@@ -226,30 +178,31 @@ class _PosComponentsState extends State<PosComponents> {
     return _getDefaultRegularVariant(product) != null;
   }
 
-  /// Build selections cho quick-add (không có addon)
+
   List<VariantGroupSelection> _buildQuickAddSelections(PosProductModel product) {
     final defaultVariant = _getDefaultRegularVariant(product);
     if (defaultVariant == null) return [];
-
-    // Lấy TẤT CẢ regular variant
-    final allRegular = product.variants.where((v) => !v.isAddonGroup).toList();
-
-    return allRegular.map((variant) {
-      final isDefault = variant.id == defaultVariant.id;
-
-      return VariantGroupSelection(
-        variantId: variant.id,
-        groupName: variant.groupName,
+    return [
+      VariantGroupSelection(
+        variantId: defaultVariant.id,
+        groupName: defaultVariant.groupName,
         isAddonGroup: false,
-        selectedIngredients: isDefault
-            ? {
-          for (final ing in variant.ingredients)
-            ing.ingredientId: ing.maxSelectableCount ?? 1,
-        }
-            : {},  // group khác → gửi rỗng
+        selectedIngredients: _autoDistributeIngredients(defaultVariant),
         addonItems: null,
-      );
-    }).toList();
+      ),
+    ];
+  }
+
+  /// Trả về VariantGroupSelection rỗng (variantId=0) để modal tự auto-check
+  /// theo logic minSelect > 0 trong initState
+  VariantGroupSelection _autoSelectRegularVariant(PosProductModel product) {
+    return VariantGroupSelection(
+      variantId: 0,
+      groupName: '',
+      isAddonGroup: false,
+      selectedIngredients: {},
+      addonItems: null,
+    );
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -333,9 +286,7 @@ class _PosComponentsState extends State<PosComponents> {
   }
 
   void _showVariantModal(PosProductModel product, PriceOption price) {
-    // Tự động chọn default variant hoặc variant đầu tiên
     final initialSelection = _autoSelectRegularVariant(product);
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -343,7 +294,7 @@ class _PosComponentsState extends State<PosComponents> {
       builder: (_) => _MultiVariantSelectionModal(
         product: product,
         selectedPrice: price,
-        initialSelection: initialSelection, // Truyền initial để tự điền
+        initialSelection: initialSelection,
         onConfirm: (selections, note) {
           Navigator.pop(context);
           _addToCart(CartItem(
@@ -482,6 +433,15 @@ class _PosComponentsState extends State<PosComponents> {
     );
   }
 
+  void _openImportStockScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const ImportStockScreen(),
+      ),
+    );
+  }
+
   String _formatMoney(double amount) => amount
       .toStringAsFixed(0)
       .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
@@ -514,27 +474,50 @@ class _PosComponentsState extends State<PosComponents> {
                         children: [
                           Expanded(child: _buildTopMenuContent()),
                           const SizedBox(width: 12),
-                          ElevatedButton.icon(
-                            icon: Icon(
-                              _currentShift?.isOpen == true
-                                  ? Icons.power_settings_new
-                                  : Icons.play_arrow,
-                              size: 20,
+                          if (_currentShift?.isOpen == true) ...[
+                            // Nút Nhập kho (chỉ khi ca mở)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.inventory_2_outlined, size: 20),
+                                label: const Text('Nhập kho',
+                                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blueAccent,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                onPressed: _openImportStockScreen,
+                              ),
                             ),
-                            label: Text(
-                              _currentShift?.isOpen == true ? 'Đóng ca' : 'Mở ca',
-                              style: const TextStyle(fontSize: 15),
+                            // Nút Đóng ca
+                            ElevatedButton.icon(
+                              icon: const Icon(Icons.power_settings_new, size: 20),
+                              label: const Text('Đóng ca',
+                                  style: TextStyle(fontSize: 15)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.redAccent,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: _openShiftScreen,
                             ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _currentShift?.isOpen == true
-                                  ? Colors.redAccent
-                                  : Colors.green,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ] else
+                          // Nút Mở ca
+                            ElevatedButton.icon(
+                              icon: const Icon(Icons.play_arrow, size: 20),
+                              label: const Text('Mở ca',
+                                  style: TextStyle(fontSize: 15)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: _openShiftScreen,
                             ),
-                            onPressed: _openShiftScreen,
-                          ),
                         ],
                       ),
                     ),
@@ -648,7 +631,7 @@ class _PosComponentsState extends State<PosComponents> {
           ),
         ),
 
-        // ── RIGHT: Cart ──
+        // ── RIGHT: Cart ── (giữ nguyên phần cart)
         Expanded(
           flex: 5,
           child: Container(
@@ -1201,19 +1184,6 @@ class _QuickAddSheetState extends State<_QuickAddSheet> {
     _selectedPrice = widget.initialPrice;
   }
 
-  bool get _shouldDisableCustomize {
-    final regularVariants = widget.product.variants.where((v) => !v.isAddonGroup).toList();
-    final hasAddon = widget.product.variants.any((v) => v.isAddonGroup);
-
-    // Không có variant/addon → disable
-    if (regularVariants.isEmpty && !hasAddon) return true;
-
-    // Chỉ có đúng 1 regular variant + full-auto + không addon → disable
-    return regularVariants.length == 1 &&
-        isFullAutoVariant(regularVariants.first) &&  // ← Gọi hàm helper
-        !hasAddon;
-  }
-
   String _fmt(double v) => v
       .toStringAsFixed(0)
       .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
@@ -1341,7 +1311,7 @@ class _QuickAddSheetState extends State<_QuickAddSheet> {
                   child: _ActionButton(
                     icon: Icons.local_offer_outlined,
                     label: 'Chọn giá',
-                    sublabel: 'Đang chọn ${_selectedPrice.label}',
+                    sublabel: _selectedPrice.label,
                     color: Colors.indigo,
                     enabled: priceChangeable,
                     onTap: priceChangeable
@@ -1362,12 +1332,12 @@ class _QuickAddSheetState extends State<_QuickAddSheet> {
                   child: _ActionButton(
                     icon: Icons.tune_outlined,
                     label: 'Tùy chỉnh',
-                    sublabel: _shouldDisableCustomize
-                        ? 'Không cần tùy chỉnh'
-                        : (widget.hasVariantOrAddon ? 'Biến thể & Addon' : 'Không có'),
-                    color: Colors.lightBlue,
-                    enabled: !_shouldDisableCustomize,  // ← Sửa điều kiện disable
-                    onTap: !_shouldDisableCustomize
+                    sublabel: widget.hasVariantOrAddon
+                        ? 'Biến thể & Addon'
+                        : 'Không có',
+                    color: Colors.teal,
+                    enabled: widget.hasVariantOrAddon,
+                    onTap: widget.hasVariantOrAddon
                         ? () => widget.onOpenVariantModal(_selectedPrice)
                         : null,
                   ),
@@ -1378,8 +1348,8 @@ class _QuickAddSheetState extends State<_QuickAddSheet> {
                 Expanded(
                   child: _ActionButton(
                     icon: Icons.add_shopping_cart,
-                    label: 'Xác nhận',
-                    sublabel: '',
+                    label: 'Thêm nhanh',
+                    sublabel: widget.canQuickAdd ? 'Giá gốc' : 'Cần chọn\nbiến thể',
                     color: Colors.deepOrange,
                     enabled: widget.canQuickAdd,
                     isPrimary: true,
@@ -1448,77 +1418,67 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final effectiveColor = enabled ? color : Colors.grey;
 
-    // Đặc biệt cho nút Xác nhận (isPrimary)
-    Color bgColor;
-    Color borderColor;
-    Color textIconColor;
-
-    if (isPrimary) {
-      bgColor = enabled ? Colors.blue : Colors.grey[400]!; // teal đậm
-      borderColor = enabled ? Colors.teal.shade300 : Colors.grey.shade400;
-      textIconColor = enabled ? Colors.white : Colors.grey[700]!;
-    } else {
-      bgColor = enabled ? color.withOpacity(0.1) : Colors.grey.shade100;
-      borderColor = enabled ? color.withOpacity(0.3) : Colors.grey.shade300;
-      textIconColor = enabled ? effectiveColor : Colors.grey[400]!;
-    }
-
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12), // cao hơn chút
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: borderColor, width: 1.5),
+          color: enabled
+              ? (isPrimary ? color : color.withOpacity(0.08))
+              : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: enabled ? color.withOpacity(isPrimary ? 0 : 0.3) : Colors.grey.shade300,
+            width: 1.5,
+          ),
           boxShadow: enabled && isPrimary
-              ? [
-            BoxShadow(
-              color: Colors.teal.withOpacity(0.4),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            )
-          ]
+              ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))]
               : null,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 28,
-              color: textIconColor,
-            ),
-            const SizedBox(height: 8),
+            Icon(icon,
+                size: 24,
+                color: enabled
+                    ? (isPrimary ? Colors.white : effectiveColor)
+                    : Colors.grey[400]),
+            const SizedBox(height: 6),
             Text(
               label,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: textIconColor,
+                color: enabled
+                    ? (isPrimary ? Colors.white : effectiveColor)
+                    : Colors.grey[400],
               ),
             ),
-            if (sublabel.isNotEmpty) ...[  // Chỉ hiển thị nếu sublabel KHÔNG rỗng
-              const SizedBox(height: 4),
-              Text(
-                sublabel,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: textIconColor.withOpacity(0.85),
-                  height: 1.2,
-                ),
+            const SizedBox(height: 2),
+            Text(
+              sublabel,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                color: enabled
+                    ? (isPrimary ? Colors.white.withOpacity(0.8) : effectiveColor.withOpacity(0.7))
+                    : Colors.grey[350],
+                height: 1.2,
               ),
-            ],
+            ),
           ],
         ),
       ),
     );
   }
 }
+
+// ════════════════════════════════════════
+// ORDER MODE SELECTOR
+// ════════════════════════════════════════
 
 class _OrderModeSelector extends StatelessWidget {
   final String currentMode;
@@ -1717,6 +1677,22 @@ class _PriceSelectionModal extends StatelessWidget {
   }
 }
 
+// ── Helper: phân phối số lượng chọn (minSelect) vào các NL theo thứ tự ──
+// VD: minSelect=1, [Hamburger max=1, Chickenburger max=1] → {Hamburger: 1}
+// VD: minSelect=3, [Garlic max=2, Cheddar max=2] → {Garlic: 2, Cheddar: 1}
+Map<int, int> _autoDistributeIngredients(PosVariantModel v) {
+  final result = <int, int>{};
+  int remaining = v.minSelect;
+  for (final ing in v.ingredients) {
+    if (remaining <= 0) break;
+    final maxPer = ing.maxSelectableCount ?? 1;
+    final assign = remaining.clamp(0, maxPer);
+    if (assign > 0) result[ing.ingredientId] = assign;
+    remaining -= assign;
+  }
+  return result;
+}
+
 // ════════════════════════════════════════
 // MODAL: Multi-group variant selection
 // ════════════════════════════════════════
@@ -1724,7 +1700,7 @@ class _PriceSelectionModal extends StatelessWidget {
 class _MultiVariantSelectionModal extends StatefulWidget {
   final PosProductModel product;
   final PriceOption selectedPrice;
-  final VariantGroupSelection? initialSelection; // Mới: selection mặc định
+  final VariantGroupSelection? initialSelection;
   final void Function(List<VariantGroupSelection>, String?) onConfirm;
 
   const _MultiVariantSelectionModal({
@@ -1735,36 +1711,38 @@ class _MultiVariantSelectionModal extends StatefulWidget {
   });
 
   @override
-  State<_MultiVariantSelectionModal> createState() => _MultiVariantSelectionModalState();
+  State<_MultiVariantSelectionModal> createState() =>
+      _MultiVariantSelectionModalState();
 }
 
 class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal> {
+  // Checkbox style: Set các variantId đang checked (thay cho radio _activeVariantId)
+  late final Set<int> _checkedVariantIds;
   late final Map<int, Map<int, int>> _selections;
-  int? _activeVariantId;
   final _noteCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _selections = {};
+    _checkedVariantIds = {};
+
     for (final v in widget.product.variants) {
       _selections[v.id] = {};
     }
 
-    // Tự động chọn variant default hoặc đầu tiên + điền sẵn
+    final regular = widget.product.variants.where((v) => !v.isAddonGroup).toList();
+
     if (widget.initialSelection != null && widget.initialSelection!.variantId != 0) {
       final init = widget.initialSelection!;
-      _activeVariantId = init.variantId;
+      _checkedVariantIds.add(init.variantId);
       _selections[init.variantId] = Map.from(init.selectedIngredients);
     } else {
-      // Fallback nếu không có initial
-      final regular = widget.product.variants.where((v) => !v.isAddonGroup).toList();
-      if (regular.isNotEmpty) {
-        final first = regular.first;
-        _activeVariantId = first.id;
-        for (final ing in first.ingredients) {
-          _selections[first.id]![ing.ingredientId] = ing.maxSelectableCount ?? 1;
-        }
+      // Auto-check tất cả variant BẮT BUỘC (minSelect > 0)
+      // Variant TÙY CHỌN (minSelect == 0) → để unchecked mặc định
+      for (final v in regular.where((v) => v.minSelect > 0)) {
+        _checkedVariantIds.add(v.id);
+        _selections[v.id]!.addAll(_autoFillIngredients(v));
       }
     }
   }
@@ -1785,6 +1763,23 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
         v.minSelect == totalRequired;
   }
 
+  /// Tự động phân bổ số lượng nguyên liệu khi auto-check variant:
+  /// Duyệt từ đầu đến cuối, mỗi NL lấy min(maxSelectableCount, remaining)
+  /// cho đến khi hết maxSelect của variant.
+  Map<int, int> _autoFillIngredients(PosVariantModel variant) {
+    if (variant.ingredients.isEmpty) return {};
+    final result = <int, int>{};
+    int remaining = variant.maxSelect;
+    for (final ing in variant.ingredients) {
+      if (remaining <= 0) break;
+      final cap = ing.maxSelectableCount ?? 1;
+      final give = remaining < cap ? remaining : cap;
+      if (give > 0) result[ing.ingredientId] = give;
+      remaining -= give;
+    }
+    return result;
+  }
+
   /// Label hiển thị: "Lựa chọn 1", "Lựa chọn 2", ...
   /// Không render tên variant thực
   String _variantLabel(PosVariantModel variant) {
@@ -1793,7 +1788,9 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
     return 'Lựa chọn ${idx + 1}';
   }
 
-  Widget _buildFullAutoCard(PosVariantModel variant, bool isActive) {
+  Widget _buildFullAutoCard(PosVariantModel variant) {
+    final isChecked = _checkedVariantIds.contains(variant.id);
+    final isRequired = variant.minSelect > 0;
     final label = _variantLabel(variant);
     final ingSummary = variant.ingredients
         .map((i) => '${i.ingredientName} ×${i.maxSelectableCount ?? 1}')
@@ -1803,17 +1800,12 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
     return GestureDetector(
       onTap: () {
         setState(() {
-          if (isActive) {
-            _activeVariantId = null;
+          if (isChecked) {
+            _checkedVariantIds.remove(variant.id);
             _selections[variant.id]!.clear();
           } else {
-            if (_activeVariantId != null) {
-              _selections[_activeVariantId]!.clear();
-            }
-            _activeVariantId = variant.id;
-            for (final ing in variant.ingredients) {
-              _selections[variant.id]![ing.ingredientId] = ing.maxSelectableCount ?? 1;
-            }
+            _checkedVariantIds.add(variant.id);
+            _selections[variant.id]!.addAll(_autoFillIngredients(variant));
           }
         });
       },
@@ -1822,11 +1814,11 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isActive ? Colors.teal.shade50 : Colors.grey.shade50,
+          color: isChecked ? Colors.teal.shade50 : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isActive ? Colors.teal.shade400 : Colors.grey.shade300,
-            width: isActive ? 2 : 1,
+            color: isChecked ? Colors.teal.shade400 : Colors.grey.shade300,
+            width: isChecked ? 2 : 1,
           ),
         ),
         child: Row(
@@ -1836,14 +1828,14 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
               width: 22,
               height: 22,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isActive ? Colors.teal : Colors.transparent,
+                borderRadius: BorderRadius.circular(5),
+                color: isChecked ? Colors.teal : Colors.transparent,
                 border: Border.all(
-                  color: isActive ? Colors.teal : Colors.grey.shade400,
+                  color: isChecked ? Colors.teal : Colors.grey.shade400,
                   width: 2,
                 ),
               ),
-              child: isActive
+              child: isChecked
                   ? const Icon(Icons.check, color: Colors.white, size: 14)
                   : null,
             ),
@@ -1852,20 +1844,42 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: isActive ? Colors.deepOrange : Colors.black87,
+                  Row(children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: isChecked ? Colors.teal.shade700 : Colors.black87,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 6),
+                    // Badge Bắt buộc / Tùy chọn
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: isRequired ? Colors.red.shade50 : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: isRequired ? Colors.red.shade300 : Colors.grey.shade400,
+                        ),
+                      ),
+                      child: Text(
+                        isRequired ? 'Bắt buộc' : 'Tùy chọn',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: isRequired ? Colors.red.shade600 : Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  ]),
                   const SizedBox(height: 2),
                   Text(
                     ingSummary,
                     style: TextStyle(
                       fontSize: 11,
-                      color: isActive ? Colors.deepOrange.shade600 : Colors.grey[600],
+                      color: isChecked ? Colors.teal.shade600 : Colors.grey[600],
                     ),
                   ),
                   Text(
@@ -1873,17 +1887,17 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
                     style: TextStyle(
                       fontSize: 10,
                       fontStyle: FontStyle.italic,
-                      color: isActive ? Colors.deepOrange.shade300 : Colors.grey[400],
+                      color: isChecked ? Colors.teal.shade300 : Colors.grey[400],
                     ),
                   ),
                 ],
               ),
             ),
-            if (isActive)
+            if (isChecked)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.deepOrange.shade100,
+                  color: Colors.teal.shade100,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -1891,7 +1905,7 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: Colors.deepOrange.shade700,
+                    color: Colors.teal.shade700,
                   ),
                 ),
               ),
@@ -1901,9 +1915,12 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
     );
   }
 
-  Widget _buildSelectableCard(
-      PosVariantModel variant, bool isActive, Map<int, int> map, int total) {
+  Widget _buildSelectableCard(PosVariantModel variant) {
+    final isChecked = _checkedVariantIds.contains(variant.id);
+    final isRequired = variant.minSelect > 0;
     final label = _variantLabel(variant);
+    final map = _selections[variant.id] ?? {};
+    final total = map.values.fold(0, (s, c) => s + c);
     final isGroupValid = total >= variant.minSelect && total <= variant.maxSelect;
 
     return Column(
@@ -1912,15 +1929,12 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
         GestureDetector(
           onTap: () {
             setState(() {
-              if (isActive) {
-                _activeVariantId = null;
+              if (isChecked) {
+                _checkedVariantIds.remove(variant.id);
                 _selections[variant.id]!.clear();
               } else {
-                if (_activeVariantId != null) {
-                  _selections[_activeVariantId]!.clear();
-                }
-                _activeVariantId = variant.id;
-                _selections[variant.id]!.clear();
+                _checkedVariantIds.add(variant.id);
+                _selections[variant.id]!.addAll(_autoFillIngredients(variant));
               }
             });
           },
@@ -1928,16 +1942,16 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: isActive ? Colors.blue.shade50 : Colors.grey.shade50,
+              color: isChecked ? Colors.blue.shade50 : Colors.grey.shade50,
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(12),
                 topRight: const Radius.circular(12),
-                bottomLeft: Radius.circular(isActive ? 0 : 12),
-                bottomRight: Radius.circular(isActive ? 0 : 12),
+                bottomLeft: Radius.circular(isChecked ? 0 : 12),
+                bottomRight: Radius.circular(isChecked ? 0 : 12),
               ),
               border: Border.all(
-                color: isActive ? Colors.blue.shade400 : Colors.grey.shade300,
-                width: isActive ? 2 : 1,
+                color: isChecked ? Colors.blue.shade400 : Colors.grey.shade300,
+                width: isChecked ? 2 : 1,
               ),
             ),
             child: Row(children: [
@@ -1946,50 +1960,74 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
                 width: 22,
                 height: 22,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isActive ? Colors.blue : Colors.transparent,
+                  borderRadius: BorderRadius.circular(5),
+                  color: isChecked ? Colors.blue : Colors.transparent,
                   border: Border.all(
-                      color: isActive ? Colors.blue : Colors.grey.shade400, width: 2),
+                      color: isChecked ? Colors.blue : Colors.grey.shade400, width: 2),
                 ),
-                child:
-                isActive ? const Icon(Icons.check, color: Colors.white, size: 14) : null,
+                child: isChecked
+                    ? const Icon(Icons.check, color: Colors.white, size: 14)
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label,
-                        style: TextStyle(
+                    Row(children: [
+                      Text(label,
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: isChecked ? Colors.blue.shade700 : Colors.black87)),
+                      const SizedBox(width: 6),
+                      // Badge Bắt buộc / Tùy chọn
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: isRequired ? Colors.red.shade50 : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: isRequired ? Colors.red.shade300 : Colors.grey.shade400,
+                          ),
+                        ),
+                        child: Text(
+                          isRequired ? 'Bắt buộc' : 'Tùy chọn',
+                          style: TextStyle(
+                            fontSize: 9,
                             fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: isActive ? Colors.blue : Colors.black87)),
+                            color: isRequired ? Colors.red.shade600 : Colors.grey.shade600,
+                          ),
+                        ),
+                      ),
+                    ]),
                     Text(
-                      variant.minSelect == variant.maxSelect
+                      isRequired
+                          ? (variant.minSelect == variant.maxSelect
                           ? 'Chọn đúng ${variant.minSelect} nguyên liệu'
-                          : 'Chọn từ ${variant.minSelect} đến ${variant.maxSelect}',
+                          : 'Chọn từ ${variant.minSelect} đến ${variant.maxSelect}')
+                          : (variant.maxSelect > 0
+                          ? 'Chọn tối đa ${variant.maxSelect} nguyên liệu'
+                          : 'Không giới hạn'),
                       style: TextStyle(
                           fontSize: 11,
-                          color: isActive ? Colors.blue.shade300 : Colors.grey[600]),
+                          color: isChecked ? Colors.blue.shade300 : Colors.grey[600]),
                     ),
                   ],
                 ),
               ),
-              if (isActive)
+              if (isChecked)
                 Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: isGroupValid ? Colors.green.shade50 : Colors.orange.shade50,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isGroupValid
-                          ? Colors.green.shade300
-                          : Colors.orange.shade300,
+                      color: isGroupValid ? Colors.green.shade300 : Colors.orange.shade300,
                     ),
                   ),
                   child: Text(
-                    '$total / ${variant.minSelect}',
+                    isRequired ? '$total / ${variant.minSelect}' : '$total chọn',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -2000,7 +2038,7 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
             ]),
           ),
         ),
-        if (isActive)
+        if (isChecked)
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             decoration: BoxDecoration(
@@ -2071,42 +2109,53 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
 
   Widget _buildGroup(PosVariantModel variant) {
     if (variant.isAddonGroup) return _buildAddonGroup(variant);
-    final isActive = _activeVariantId == variant.id;
-    final isFullAuto = _isFullAuto(variant);
-    if (isFullAuto) return _buildFullAutoCard(variant, isActive);
-    final map = _selections[variant.id] ?? {};
-    final total = map.values.fold(0, (s, c) => s + c);
-    return _buildSelectableCard(variant, isActive, map, total);
+    if (_isFullAuto(variant)) return _buildFullAutoCard(variant);
+    return _buildSelectableCard(variant);
   }
 
+  // Validation: chỉ variant BẮT BUỘC (minSelect > 0) mới cần checked + đủ số lượng
+  // Variant TÙY CHỌN (minSelect == 0): nếu checked thì không cần validate số lượng
   bool get _isValid {
     final regularGroups =
     widget.product.variants.where((v) => !v.isAddonGroup).toList();
     if (regularGroups.isEmpty) return true;
-    if (_activeVariantId == null) return false;
-    final activeVariant = regularGroups.firstWhere(
-            (v) => v.id == _activeVariantId,
-        orElse: () => regularGroups.first);
-    final map = _selections[_activeVariantId] ?? {};
-    final total = map.values.fold(0, (s, c) => s + c);
-    if (_isFullAuto(activeVariant)) return total == activeVariant.minSelect;
-    return total >= activeVariant.minSelect && total <= activeVariant.maxSelect;
+    for (final v in regularGroups) {
+      final isChecked = _checkedVariantIds.contains(v.id);
+      if (v.minSelect > 0) {
+        // Bắt buộc: phải checked VÀ đủ số lượng
+        if (!isChecked) return false;
+        final map = _selections[v.id] ?? {};
+        final total = map.values.fold(0, (s, c) => s + c);
+        if (_isFullAuto(v)) {
+          if (total != v.minSelect) return false;
+        } else {
+          if (total < v.minSelect || total > v.maxSelect) return false;
+        }
+      }
+      // minSelect == 0: tùy chọn, không cần validate
+    }
+    return true;
   }
 
+  // Hint chỉ liệt kê các nhóm BẮT BUỘC còn thiếu
   String get _validationHint {
     final regularGroups =
-    widget.product.variants.where((v) => !v.isAddonGroup).toList();
-    if (regularGroups.isEmpty) return '';
-    if (_activeVariantId == null) return 'Vui lòng chọn 1 công thức';
-    final activeVariant = regularGroups.firstWhere(
-            (v) => v.id == _activeVariantId,
-        orElse: () => regularGroups.first);
-    final map = _selections[_activeVariantId] ?? {};
-    final total = map.values.fold(0, (s, c) => s + c);
-    if (total < activeVariant.minSelect) {
-      return '${_variantLabel(activeVariant)}: cần chọn thêm ${activeVariant.minSelect - total}';
+    widget.product.variants.where((v) => !v.isAddonGroup && v.minSelect > 0).toList();
+    final hints = <String>[];
+    for (final v in regularGroups) {
+      final isChecked = _checkedVariantIds.contains(v.id);
+      final label = _variantLabel(v);
+      if (!isChecked) {
+        hints.add('$label: chưa chọn');
+        continue;
+      }
+      final map = _selections[v.id] ?? {};
+      final total = map.values.fold(0, (s, c) => s + c);
+      if (total < v.minSelect) {
+        hints.add('$label: cần thêm ${v.minSelect - total}');
+      }
     }
-    return '';
+    return hints.join(' · ');
   }
 
   double get _currentAddonTotal {
@@ -2228,13 +2277,13 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
     final discountFactor = 1.0 - (widget.selectedPrice.discountPercent / 100.0);
     final List<VariantGroupSelection> selections = [];
 
-    if (_activeVariantId != null) {
-      final activeVariant =
-      widget.product.variants.firstWhere((v) => v.id == _activeVariantId);
-      final ingMap = _selections[_activeVariantId] ?? {};
+    // Gom tất cả regular variant đang được checked
+    for (final v in widget.product.variants.where((v) => !v.isAddonGroup)) {
+      if (!_checkedVariantIds.contains(v.id)) continue;
+      final ingMap = _selections[v.id] ?? {};
       selections.add(VariantGroupSelection(
-        variantId: activeVariant.id,
-        groupName: activeVariant.groupName,
+        variantId: v.id,
+        groupName: v.groupName,
         isAddonGroup: false,
         selectedIngredients: Map.from(ingMap),
         addonItems: null,
@@ -2336,6 +2385,33 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
                     widget.product.variants.where((v) => v.isAddonGroup).toList();
                     if (addonGroups.isEmpty) return <Widget>[];
                     return [
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.deepOrange.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.deepOrange.shade200),
+                        ),
+                        child: Row(children: [
+                          const Icon(Icons.add_circle_outline, size: 16, color: Colors.deepOrange),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Món thêm (Addon)',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        color: Colors.deepOrange)),
+                                Text('Tùy chọn — mỗi món chọn sẽ cộng thêm vào giá',
+                                    style: TextStyle(fontSize: 10, color: Colors.deepOrange)),
+                              ],
+                            ),
+                          ),
+                        ]),
+                      ),
                       ...addonGroups.map(_buildAddonGroup).toList(),
                     ];
                   }(),
@@ -2396,7 +2472,7 @@ class _MultiVariantSelectionModalState extends State<_MultiVariantSelectionModal
             child: ElevatedButton(
               onPressed: _isValid ? _confirm : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
+                backgroundColor: Colors.deepOrange,
                 disabledBackgroundColor: Colors.grey[300],
                 foregroundColor: Colors.white,
                 minimumSize: const Size.fromHeight(50),

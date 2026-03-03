@@ -21,15 +21,28 @@ import 'package:original_taste/views/layout/layout.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:syncfusion_flutter_maps/maps.dart';
 
-class Dashboard extends StatefulWidget {
-  const Dashboard({super.key});
+class ShiperDashboard extends StatefulWidget {
+  const ShiperDashboard({super.key});
 
   @override
-  State<Dashboard> createState() => _DashboardState();
+  State<ShiperDashboard> createState() => _ShiperDashboardState();
 }
 
-class _DashboardState extends State<Dashboard> with UIMixin {
+class _ShiperDashboardState extends State<ShiperDashboard> with UIMixin {
   DashboardController controller = Get.put(DashboardController());
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.put(DashboardController(), tag: 'dashboard_controller');
+  }
+
+  // ✅ Xóa controller khi widget bị dispose
+  @override
+  void dispose() {
+    Get.delete<DashboardController>(tag: 'dashboard_controller', force: true);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -505,6 +518,9 @@ class _ClockWidgetState extends State<ClockWidget> {
 
   void _updateTime(DateTime currentDate) {
     _date = currentDate.add(const Duration(seconds: 1));
+
+    if (!mounted) return;
+
     setState(() {
       _currentTime = DateFormat('hh:mm:ss a').format(_date);
     });

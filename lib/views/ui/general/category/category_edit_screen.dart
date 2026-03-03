@@ -1,8 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_boxicons/flutter_boxicons.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:original_taste/controller/ui/general/category/category_edit_controller.dart';
+import 'package:original_taste/helper/theme/app_theme.dart';
 import 'package:original_taste/helper/utils/mixins/ui_mixins.dart';
 import 'package:original_taste/helper/utils/my_shadow.dart';
 import 'package:original_taste/helper/widgets/my_card.dart';
@@ -13,8 +15,10 @@ import 'package:original_taste/helper/widgets/my_list_extension.dart';
 import 'package:original_taste/helper/widgets/my_spacing.dart';
 import 'package:original_taste/helper/widgets/my_text.dart';
 import 'package:original_taste/helper/widgets/my_text_style.dart';
-import 'package:original_taste/helper/widgets/responsive.dart';
 import 'package:original_taste/views/layout/layout.dart';
+
+import '../../../../controller/seller/category_edit_controller.dart';
+import '../../../../helper/services/seller_services.dart';
 
 class CategoryEditScreen extends StatefulWidget {
   const CategoryEditScreen({super.key});
@@ -23,172 +27,74 @@ class CategoryEditScreen extends StatefulWidget {
   State<CategoryEditScreen> createState() => _CategoryEditScreenState();
 }
 
-class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin {
-  CategoryEditController controller = Get.put(CategoryEditController());
-
-  @override
-  late OutlineInputBorder outlineInputBorder;
+class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, WidgetsBindingObserver {
+  late CategoryEditController controller;
+  late OutlineInputBorder _outlineInputBorder;
 
   @override
   void initState() {
-    outlineInputBorder = OutlineInputBorder(
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
+    controller = Get.put(
+      CategoryEditController(),
+      tag: 'category_edit_${DateTime.now().millisecondsSinceEpoch}',
+    );
+
+    _outlineInputBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
       borderSide: BorderSide(color: contentTheme.secondary.withValues(alpha: 0.4)),
     );
-    super.initState();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    return GetBuilder(
+    return GetBuilder<CategoryEditController>(
       init: controller,
-      tag: 'category_edit_controller',
       builder: (controller) {
         return Layout(
-          screenName: "CATEGORY EDIT",
-          child: MyFlex(
-            children: [
-              MyFlexItem(sizes: 'xl-3 lg-4 md-6', child: productDetail()),
-              MyFlexItem(
-                sizes: 'lg-9 md-6',
-                child: Column(
-                  children: [
-                    addThumbnailPhoto(),
-                    MySpacing.height(20),
-                    generalInformation(),
-                    MySpacing.height(20),
-                    metaOptions(),
-                    MySpacing.height(20),
-                    MyContainer(
-                      paddingAll: 20,
-                      borderRadiusAll: 12,
-                      color: contentTheme.light,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          MyContainer.bordered(
-                            onTap: () {},
-                            color: Colors.transparent,
-                            borderRadiusAll: 12,
-                            padding: MySpacing.xy(flexSpacing * 1.5, 10),
-                            borderColor: contentTheme.dark,
-                            child: MyText.bodyMedium("Save Changes"),
-                          ),
-                          MySpacing.width(12),
-                          MyContainer(
-                            onTap: () {},
-                            color: contentTheme.primary,
-                            borderRadiusAll: 12,
-                            padding: MySpacing.xy(flexSpacing * 2, 12),
-                            child: MyText.bodyMedium("Cancel", fontWeight: 600, color: contentTheme.onPrimary),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+          screenName: "CHỈNH SỬA DANH MỤC",
+          child: controller.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Form(
+            key: controller.formKey,
+            child: MyFlex(
+              children: [
+                MyFlexItem(
+                  sizes: 'lg-12',
+                  child: Column(
+                    children: [
+                      _buildImageUpload(),
+                      MySpacing.height(20),
+                      _buildGeneralInfo(),
+                      MySpacing.height(20),
+                      _buildActions(),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget productDetail() {
+  // ── Upload section ────────────────────────────────────────────────
+  Widget _buildImageUpload() {
     return MyCard(
-       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
-      borderRadiusAll: 12,
-      paddingAll: 0,
-      child: Column(
-        children: [
-          Padding(
-            padding: MySpacing.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                MyContainer(color: contentTheme.light, height: 150, borderRadiusAll: 12, child: Center(child: Image.asset("assets/product/p-1.png"))),
-                MySpacing.height(20),
-                MyText.titleMedium(
-                  "Fashion Men , Women & Kid's",
-                  style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontSize: 18, fontWeight: FontWeight.w600),
-                ),
-                MySpacing.height(20),
-                Wrap(
-                  spacing: 32,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        MyText.bodyMedium("Created By :"),
-                        MySpacing.height(8),
-                        MyText.bodyMedium(
-                          "Seller",
-                          style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontSize: 14, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        MyText.bodyMedium("Stock :"),
-                        MySpacing.height(8),
-                        MyText.bodyMedium(
-                          "46233",
-                          style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontSize: 14, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        MyText.bodyMedium("ID :"),
-                        MySpacing.height(8),
-                        MyText.bodyMedium(
-                          "FS16276",
-                          style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontSize: 14, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Divider(height: 0),
-          Padding(
-            padding: MySpacing.all(20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: MyContainer.bordered(
-                    onTap: () {},
-                    borderRadiusAll: 12,
-                    paddingAll: 10,
-                    borderColor: contentTheme.dark,
-                    child: Center(child: MyText.bodyMedium("Create Category", fontWeight: 600)),
-                  ),
-                ),
-                MySpacing.width(12),
-                Expanded(
-                  child: MyContainer(
-                    color: contentTheme.primary,
-                    borderRadiusAll: 12,
-                    paddingAll: 12,
-                    child: Center(child: MyText.bodyMedium("Cancel", color: contentTheme.onPrimary)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget addThumbnailPhoto() {
-    return MyCard(
-       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
+      shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
       borderRadiusAll: 12,
       paddingAll: 0,
       child: Column(
@@ -196,86 +102,104 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin {
         children: [
           Padding(
             padding: MySpacing.all(20),
-            child: MyText.titleMedium(
-              "Add Thumbnail Photo",
-              style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontSize: 16, fontWeight: FontWeight.w600),
+            child: Row(
+              children: [
+                MyText.titleMedium(
+                  'Ảnh danh mục',
+                  style: TextStyle(
+                    fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (controller.isUploading) ...[
+                  MySpacing.width(12),
+                  SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: contentTheme.primary)),
+                  MySpacing.width(8),
+                  MyText.bodySmall('Đang upload...', color: contentTheme.primary),
+                ],
+                if (controller.uploadedImageUrl != null && !controller.isUploading) ...[
+                  MySpacing.width(12),
+                  Icon(Icons.check_circle, color: contentTheme.success, size: 18),
+                  MySpacing.width(4),
+                  MyText.bodySmall('Đã upload', color: contentTheme.success),
+                ],
+              ],
             ),
           ),
-          Divider(height: 0),
+          const Divider(height: 0),
           Padding(
             padding: MySpacing.all(20),
-            child: MyContainer.bordered(
-              onTap: controller.pickFiles,
-              borderRadiusAll: 12,
-              width: double.infinity,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  if (controller.files.isEmpty)
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        MySpacing.height(32),
-                        Icon(Boxicons.bx_cloud_upload, size: 48, color: contentTheme.primary),
-                        MySpacing.height(32),
-                        Wrap(
-                          spacing: 4,
-                          runSpacing: 4,
-                          children: [
-                            MyText.bodyLarge(
-                              "Drop your images here, or",
-                              style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontSize: 28),
-                            ),
-                            MyText.bodyLarge(
-                              "click to browser",
-                              style: TextStyle(
-                                fontFamily: GoogleFonts.hankenGrotesk(color: contentTheme.primary).fontFamily,
-                                color: contentTheme.primary,
-                                fontSize: 28,
-                              ),
-                            ),
-                          ],
+            child: _buildImageContent(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageContent() {
+    if ((controller.currentImageUrl != null || controller.uploadedImageUrl != null) && controller.files.isEmpty) {
+      return _buildImagePreview();
+    }
+
+    if (controller.files.isNotEmpty) {
+      return _buildFileList();
+    }
+
+    return _buildUploadBox();
+  }
+
+  Widget _buildImagePreview() {
+    final imageUrl = controller.uploadedImageUrl ?? controller.currentImageUrl;
+
+    return MyContainer(
+      onTap: controller.isUploading ? null : controller.pickFiles,
+      borderRadiusAll: 12,
+      height: 290,
+      width: double.infinity,
+      color: contentTheme.light,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              SellerService.buildImageUrl(imageUrl!),
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _imagePlaceholder(),
+            ),
+          ),
+          Positioned.fill(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: controller.isUploading ? null : controller.pickFiles,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.black.withOpacity(0.3),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.camera_alt,
+                        size: 48,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                      MySpacing.height(8),
+                      Text(
+                        'Nhấn để thay đổi ảnh',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
-                        MySpacing.height(12),
-                        MyText.bodyMedium("1600 x 1200 (4:3) recommended. PNG, JPG and GIF files are allowed"),
-                        MySpacing.height(40),
-                      ],
-                    ),
-                  if (controller.files.isNotEmpty) ...[
-                    MySpacing.height(16),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
-                      clipBehavior: Clip.antiAliasWithSaveLayer,
-                      children:
-                          controller.files
-                              .mapIndexed(
-                                (index, file) => MyContainer.bordered(
-                                  borderRadiusAll: 12,
-                                  clipBehavior: Clip.antiAliasWithSaveLayer,
-                                  paddingAll: 20,
-                                  width: 120,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      MyContainer(
-                                        height: 44,
-                                        width: 44,
-                                        borderRadiusAll: 8,
-                                        color: contentTheme.onBackground.withAlpha(28),
-                                        paddingAll: 0,
-                                        child: Icon(controller.getFileIcon(file.name), size: 20),
-                                      ),
-                                      MySpacing.height(12),
-                                      MyText.bodyMedium(file.name, fontWeight: 700, muted: true, maxLines: 2, overflow: TextOverflow.ellipsis),
-                                    ],
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                    ),
-                  ],
-                ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -284,9 +208,105 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin {
     );
   }
 
-  Widget generalInformation() {
+  Widget _buildFileList() {
+    return Column(
+      children: [
+        MyContainer.bordered(
+          onTap: controller.isUploading ? null : controller.pickFiles,
+          borderRadiusAll: 12,
+          width: double.infinity,
+          child: Padding(
+            padding: MySpacing.all(16),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: controller.files.mapIndexed(
+                    (index, file) => MyContainer.bordered(
+                  borderRadiusAll: 12,
+                  paddingAll: 16,
+                  width: 110,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      MyContainer(
+                        height: 44,
+                        width: 44,
+                        borderRadiusAll: 8,
+                        color: contentTheme.primary.withValues(alpha: 0.1),
+                        paddingAll: 0,
+                        child: Icon(controller.getFileIcon(file.name), size: 20, color: contentTheme.primary),
+                      ),
+                      MySpacing.height(8),
+                      MyText.bodySmall(file.name, fontWeight: 700, muted: true, maxLines: 2, overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+              ).toList(),
+            ),
+          ),
+        ),
+        if (controller.currentImageUrl != null || controller.uploadedImageUrl != null) ...[
+          MySpacing.height(12),
+          MyContainer.bordered(
+            onTap: () {
+              controller.files.clear();
+              controller.update();
+            },
+            borderRadiusAll: 8,
+            padding: MySpacing.xy(16, 8),
+            borderColor: contentTheme.primary,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.arrow_back, size: 16, color: contentTheme.primary),
+                MySpacing.width(4),
+                MyText.bodySmall('Quay lại ảnh hiện tại', color: contentTheme.primary),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildUploadBox() {
+    return MyContainer.bordered(
+      onTap: controller.isUploading ? null : controller.pickFiles,
+      borderRadiusAll: 12,
+      width: double.infinity,
+      child: Padding(
+        padding: MySpacing.xy(0, 32),
+        child: Column(
+          children: [
+            Icon(Boxicons.bx_cloud_upload, size: 48, color: contentTheme.primary),
+            MySpacing.height(16),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 4,
+              children: [
+                MyText.bodyLarge('Kéo thả ảnh vào đây, hoặc'),
+                MyText.bodyLarge('chọn file', color: contentTheme.primary),
+              ],
+            ),
+            MySpacing.height(8),
+            MyText.bodySmall(
+              'Hỗ trợ: PNG, JPG, WEBP (200×200)',
+              muted: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _imagePlaceholder() => Center(
+    child: Icon(Icons.category_outlined, size: 48, color: contentTheme.secondary.withValues(alpha: 0.3)),
+  );
+
+  // ── General info ──────────────────────────────────────────────────
+  Widget _buildGeneralInfo() {
     return MyCard(
-       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
+      shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
       borderRadiusAll: 12,
       paddingAll: 0,
       child: Column(
@@ -295,154 +315,40 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin {
           Padding(
             padding: MySpacing.all(20),
             child: MyText.titleMedium(
-              "General Information",
-              style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontSize: 16, fontWeight: FontWeight.w600),
+              'Thông tin danh mục',
+              style: TextStyle(
+                fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-          Divider(height: 0),
+          const Divider(height: 0),
           Padding(
             padding: MySpacing.all(20),
-            child: MyFlex(
-              contentPadding: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                MyFlexItem(
-                  sizes: 'lg-6',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Category Title"),
-                      MySpacing.height(8),
-                      TextFormField(
-                        controller: controller.categoryTitleController,
-                        style: MyTextStyle.bodyMedium(),
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          disabledBorder: outlineInputBorder,
-                          contentPadding: MySpacing.all(16),
-                          isDense: true,
-                          isCollapsed: true,
-                          hintText: "Enter title",
-                          hintStyle: MyTextStyle.bodyMedium(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                MyFlexItem(
-                  sizes: 'lg-6',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Created By"),
-                      MySpacing.height(8),
-                      DropdownButtonFormField<String>(
-                        dropdownColor: contentTheme.light,
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          disabledBorder: outlineInputBorder,
-                          contentPadding: MySpacing.all(12),
-                          isDense: true,
-                          isCollapsed: true,
-                        ),
-                        hint: MyText.bodyMedium("Created By"),
-                        value: controller.selectedCategory,
-                        onChanged: (value) => setState(() => controller.selectedCategory = value),
-                        validator: (value) => value == null ? 'Please select a category' : null,
-                        items:
-                            controller.categories.map((category) {
-                              return DropdownMenuItem(value: category, child: MyText.bodyMedium(category));
-                            }).toList(),
-                      ),
-                    ],
-                  ),
-                ),
-                MyFlexItem(
-                  sizes: 'lg-6',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Stock"),
-                      MySpacing.height(8),
-                      TextFormField(
-                        controller: controller.stockController,
-                        style: MyTextStyle.bodyMedium(),
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          disabledBorder: outlineInputBorder,
-                          contentPadding: MySpacing.all(16),
-                          isDense: true,
-                          isCollapsed: true,
-                          hintText: "Stock",
-                          hintStyle: MyTextStyle.bodyMedium(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                MyFlexItem(
-                  sizes: 'lg-6',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Tag ID"),
-                      MySpacing.height(8),
-                      TextFormField(
-                        controller: controller.tagIdController,
-                        style: MyTextStyle.bodyMedium(),
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          disabledBorder: outlineInputBorder,
-                          contentPadding: MySpacing.all(16),
-                          isDense: true,
-                          isCollapsed: true,
-                          hintText: "Enter id",
-                          hintStyle: MyTextStyle.bodyMedium(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                MyFlexItem(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Description"),
-                      MySpacing.height(8),
-                      TextFormField(
-                        maxLines: 8,
-                        controller: controller.descriptionController,
-                        style: MyTextStyle.bodyMedium(),
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          disabledBorder: outlineInputBorder,
-                          contentPadding: MySpacing.all(16),
-                          isDense: true,
-                          isCollapsed: true,
-                          hintText: "Short description about product",
-                          hintStyle: MyTextStyle.bodyMedium(),
-                        ),
-                      ),
-                    ],
+                MyText.bodyMedium('Tên danh mục *'),
+                MySpacing.height(8),
+                TextFormField(
+                  controller: controller.nameController,
+                  style: MyTextStyle.bodyMedium(),
+                  onChanged: (_) => controller.update(),
+                  validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Vui lòng nhập tên danh mục' : null,
+                  decoration: InputDecoration(
+                    border: outlineInputBorder,
+                    focusedBorder: outlineInputBorder,
+                    enabledBorder: outlineInputBorder,
+                    errorBorder: outlineInputBorder,
+                    focusedErrorBorder: outlineInputBorder,
+                    disabledBorder: outlineInputBorder,
+                    contentPadding: MySpacing.all(16),
+                    isDense: true,
+                    isCollapsed: true,
+                    hintText: 'Nhập tên danh mục',
+                    hintStyle: MyTextStyle.bodyMedium(muted: true),
                   ),
                 ),
               ],
@@ -453,113 +359,53 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin {
     );
   }
 
-  Widget metaOptions() {
-    return MyCard(
-       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
+  // ── Action bar ────────────────────────────────────────────────────
+  Widget _buildActions() {
+    return MyContainer(
+      paddingAll: 20,
       borderRadiusAll: 12,
-      paddingAll: 0,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      color: contentTheme.light,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          Padding(
-            padding: MySpacing.all(20),
-            child: MyText.titleMedium(
-              "Meta Options",
-              style: TextStyle(fontFamily: GoogleFonts.hankenGrotesk().fontFamily, fontSize: 16, fontWeight: FontWeight.w600),
-            ),
+          MyContainer.bordered(
+            onTap: () => Get.back(),
+            color: Colors.transparent,
+            borderRadiusAll: 12,
+            padding: MySpacing.xy(24, 10),
+            borderColor: contentTheme.dark,
+            child: MyText.bodyMedium('Hủy'),
           ),
-          Divider(height: 0),
-          Padding(
-            padding: MySpacing.all(20),
-            child: MyFlex(
-              contentPadding: false,
-              children: [
-                MyFlexItem(
-                  sizes: 'lg-6',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Meta Title"),
-                      MySpacing.height(8),
-                      TextFormField(
-                        controller: controller.metaTitleController,
-                        style: MyTextStyle.bodyMedium(),
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          disabledBorder: outlineInputBorder,
-                          contentPadding: MySpacing.all(16),
-                          isDense: true,
-                          isCollapsed: true,
-                          hintText: "Enter title",
-                          hintStyle: MyTextStyle.bodyMedium(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                MyFlexItem(
-                  sizes: 'lg-6',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Meta Tag Keyword"),
-                      MySpacing.height(8),
-                      TextFormField(
-                        controller: controller.metaTagController,
-                        style: MyTextStyle.bodyMedium(),
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          disabledBorder: outlineInputBorder,
-                          contentPadding: MySpacing.all(16),
-                          isDense: true,
-                          isCollapsed: true,
-                          hintText: "Enter word",
-                          hintStyle: MyTextStyle.bodyMedium(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                MyFlexItem(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.bodyMedium("Description"),
-                      MySpacing.height(8),
-                      TextFormField(
-                        maxLines: 6,
-                        style: MyTextStyle.bodyMedium(),
-                        controller: controller.metaDescriptionController,
-                        decoration: InputDecoration(
-                          border: outlineInputBorder,
-                          focusedErrorBorder: outlineInputBorder,
-                          errorBorder: outlineInputBorder,
-                          focusedBorder: outlineInputBorder,
-                          enabledBorder: outlineInputBorder,
-                          disabledBorder: outlineInputBorder,
-                          contentPadding: MySpacing.all(16),
-                          isDense: true,
-                          isCollapsed: true,
-                          hintText: "Type description",
-                          hintStyle: MyTextStyle.bodyMedium(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          MySpacing.width(12),
+          MyContainer(
+            onTap: () => _handleSave(),
+            color: contentTheme.primary,
+            borderRadiusAll: 12,
+            padding: MySpacing.xy(24, 12),
+            child: controller.isSaving
+                ? SizedBox(
+              height: 18,
+              width: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: contentTheme.onPrimary),
+            )
+                : MyText.bodyMedium('Lưu thay đổi', fontWeight: 600, color: contentTheme.onPrimary),
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _handleSave() async {
+    final success = await controller.save();
+    if (success) {
+      Get.back(result: true);
+    }
+  }
+
+  OutlineInputBorder get outlineInputBorder {
+    return OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: contentTheme.secondary.withValues(alpha: 0.4)),
     );
   }
 }

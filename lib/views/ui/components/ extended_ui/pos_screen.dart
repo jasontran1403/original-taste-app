@@ -250,8 +250,11 @@ class _SettingsPage extends StatelessWidget {
           ElevatedButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
-              await AuthService.logout();
-              // AuthService.logout() tự gọi Get.offAllNamed('/auth/sign_in')
+              await Future.delayed(const Duration(milliseconds: 300));
+
+              if (context.mounted) {
+                await AuthService.logout();
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent,

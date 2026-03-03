@@ -9,6 +9,7 @@ class SignInController extends MyController {
   bool rememberMe = false;
 
   MyFormValidator basicValidator = MyFormValidator();
+  bool isLoading = false;
 
   @override
   void onInit() {
@@ -43,6 +44,7 @@ class SignInController extends MyController {
 
   Future<void> onLogin() async {
     if (basicValidator.validateForm()) {
+      isLoading = true;
       update();
 
       final data = basicValidator.getData();
@@ -52,6 +54,9 @@ class SignInController extends MyController {
       );
 
       if (error != null) {
+        // Lỗi: tắt loading, hiện snackbar
+        isLoading = false;
+        update();
         Get.snackbar(
           'Đăng nhập thất bại',
           error,
@@ -60,15 +65,15 @@ class SignInController extends MyController {
           colorText: Colors.white,
           duration: const Duration(seconds: 3),
         );
+      } else {
+        // Thành công: giữ isLoading = true (button không bị tap lại)
+        // rồi navigate sang WelcomeScreen
+        Get.offAllNamed('/welcome');
       }
-
-      update();
     }
   }
 
   void goToSignUp() {
-    // offNamed thay vì toNamed: xóa SignInScreen khỏi stack
-    // → khi quay lại /auth/sign_in sẽ tạo controller MỚI → formKey MỚI
     Get.offNamed('/auth/sign_up');
   }
 }

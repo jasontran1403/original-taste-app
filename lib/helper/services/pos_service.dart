@@ -997,6 +997,19 @@ class PosService {
     throw Exception(res.message.isNotEmpty ? res.message : 'Failed to close shift');
   }
 
+  static Future<bool> isFirstShiftOfDay() async {
+    final res = await ApiHelper.get<bool>(
+      '$_baseUrl/shifts/is-first-today',
+      fromData: (data) {
+        if (data is bool) return data;
+        if (data is String) return data.toLowerCase() == 'true';
+        return false;
+      },
+    );
+
+    return res.isSuccess ? (res.data ?? false) : false;
+  }
+
   static Future<List<PosShiftModel>> getShiftsByDate(String date) async {
     final res = await ApiHelper.get('$_baseUrl/shifts?date=$date', fromData: (data) => data);
     if (res.isSuccess && res.data != null) {
@@ -1114,7 +1127,8 @@ class PosService {
       body: body,
       fromData: (data) => data,
     );
-    if (res.isSuccess && res.data != null) {
+
+    if (res.message == "Nhập kho thành công.") {
       return (res.data as List<dynamic>)
           .map((e) => StockImportModel.fromJson(e as Map<String, dynamic>))
           .toList();

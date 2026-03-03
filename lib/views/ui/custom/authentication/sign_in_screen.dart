@@ -97,7 +97,7 @@ class _SignInScreenState extends State<SignInScreen> with UIMixin {
                       child: Checkbox(
                         visualDensity: VisualDensity.compact,
                         value: controller.rememberMe,
-                        onChanged: controller.toggleRememberMe,
+                        onChanged: controller.isLoading ? null : controller.toggleRememberMe,
                       ),
                     ),
                     MyText.bodyMedium("Ghi nhớ đăng nhập"),
@@ -105,15 +105,11 @@ class _SignInScreenState extends State<SignInScreen> with UIMixin {
                 ),
                 MySpacing.height(16),
 
-                // ── Nút đăng nhập ──
-                MyContainer(
-                  onTap: () => controller.onLogin(),
-                  color: contentTheme.primary.withValues(alpha: 0.1),
-                  paddingAll: 12,
-                  borderRadiusAll: 12,
-                  child: Center(
-                    child: MyText.bodyMedium("Đăng nhập", color: contentTheme.primary),
-                  ),
+                // ── Nút đăng nhập với loading state ──
+                _LoginButton(
+                  isLoading: controller.isLoading,
+                  primaryColor: contentTheme.primary,
+                  onTap: controller.isLoading ? null : () => controller.onLogin(),
                 ),
                 MySpacing.height(24),
 
@@ -124,7 +120,7 @@ class _SignInScreenState extends State<SignInScreen> with UIMixin {
                     MyText.bodyMedium("Chưa có tài khoản?", color: contentTheme.primary),
                     MySpacing.width(8),
                     InkWell(
-                      onTap: controller.goToSignUp,
+                      onTap: controller.isLoading ? null : controller.goToSignUp,
                       child: MyText.bodyMedium("Đăng ký", fontWeight: 700),
                     ),
                   ],
@@ -134,6 +130,138 @@ class _SignInScreenState extends State<SignInScreen> with UIMixin {
           ),
         );
       },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Login button với loading animation
+// ─────────────────────────────────────────────────────────────
+class _LoginButton extends StatefulWidget {
+  final bool isLoading;
+  final Color primaryColor;
+  final VoidCallback? onTap;
+
+  const _LoginButton({
+    required this.isLoading,
+    required this.primaryColor,
+    required this.onTap,
+  });
+
+  @override
+  State<_LoginButton> createState() => _LoginButtonState();
+}
+
+class _LoginButtonState extends State<_LoginButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _spinCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _spinCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_LoginButton old) {
+    super.didUpdateWidget(old);
+    if (widget.isLoading && !_spinCtrl.isAnimating) {
+      _spinCtrl.repeat();
+    } else if (!widget.isLoading && _spinCtrl.isAnimating) {
+      _spinCtrl.stop();
+      _spinCtrl.reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _spinCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool disabled = widget.isLoading;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        color: disabled
+            ? widget.primaryColor.withOpacity(0.05)
+            : widget.primaryColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: widget.primaryColor.withOpacity(disabled ? 0.2 : 0.4),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: disabled
+                    ? _buildLoadingContent()
+                    : _buildIdleContent(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIdleContent() {
+    return Text(
+      'Đăng nhập',
+      key: const ValueKey('idle'),
+      style: TextStyle(
+        color: widget.primaryColor,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+      ),
+    );
+  }
+
+  Widget _buildLoadingContent() {
+    return Row(
+      key: const ValueKey('loading'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedBuilder(
+          animation: _spinCtrl,
+          builder: (_, child) => Transform.rotate(
+            angle: _spinCtrl.value * 2 * 3.14159,
+            child: child,
+          ),
+          child: SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: widget.primaryColor.withOpacity(0.6),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          'Đang đăng nhập...',
+          style: TextStyle(
+            color: widget.primaryColor.withOpacity(0.6),
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+          ),
+        ),
+      ],
     );
   }
 }
