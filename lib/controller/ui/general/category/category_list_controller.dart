@@ -20,6 +20,7 @@ class CategoryListController extends GetxController {
 
   // ── Load data ────────────────────────────────────────────────────
   Future<void> fetchCategories() async {
+    print("Loaded");
     isLoading = true;
     errorMessage = null;
     update();

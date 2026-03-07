@@ -395,24 +395,52 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
     try {
       final transferStr = _transferCtrl.text.replaceAll(',', '');
       final transfer = double.tryParse(transferStr) ?? 0;
-      await PosService.closeShift(
+
+      final shift = await PosService.closeShift(
         closeDenominations: _buildDenomList(_closeDenomCtrl),
         closeInventory: _buildInventoryList(_closePackCtrl, _closeUnitCtrl),
         transferAmount: transfer > 0 ? transfer : null,
         note: _noteCtrl.text.trim().isNotEmpty ? _noteCtrl.text.trim() : null,
       );
+
       widget.onShiftChanged(null);
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Đóng ca thành công'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
-      _showSnack('$e', Colors.red);
+      String errorMsg = e.toString();
+
+      // Xử lý lỗi validation cụ thể từ backend
+      if (errorMsg.contains('Phải nhập mệnh giá tiền cuối ca')) {
+        errorMsg = 'Vui lòng nhập ít nhất một mệnh giá tiền cuối ca.';
+      } else if (errorMsg.contains('Phải nhập kho cuối ca')) {
+        errorMsg = 'Vui lòng nhập số lượng nguyên liệu kiểm kho cuối ca.';
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _confirmCloseShift() {
-    showDialog(
+  Future<void> _confirmCloseShift() async {
+    final bool? confirmed = await showDialog<bool>(
       context: context,
+      barrierDismissible: false, // ← Quan trọng: không cho dismiss bằng tap ngoài
       builder: (dialogCtx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(children: [
@@ -422,18 +450,29 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
         ]),
         content: const Text('Bạn có chắc chắn muốn đóng ca không?\nHành động này không thể hoàn tác.'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(dialogCtx).pop(), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: const Text('Hủy'),
+          ),
           ElevatedButton(
             onPressed: () {
-              Navigator.of(dialogCtx).pop();
-              _closeShift();
+              Navigator.of(dialogCtx).pop(true); // ← Trả về true
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Đóng ca'),
           ),
         ],
       ),
     );
+
+    if (confirmed == true) {
+      // Delay nhỏ để tránh gesture conflict trên iOS release
+      await Future.delayed(const Duration(milliseconds: 100));
+      _closeShift();
+    }
   }
 
   void _showSnack(String msg, Color color) {
@@ -529,10 +568,23 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
       icon: Icons.person_outline,
       child: TextField(
         controller: _staffNameCtrl,
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           labelText: 'Tên nhân viên đứng ca *',
-          border: OutlineInputBorder(),
-          prefixIcon: Icon(Icons.badge_outlined),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+          ),
+          prefixIcon: const Icon(Icons.badge_outlined),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          hintStyle: TextStyle(color: Colors.grey.shade500),
         ),
       ),
     ),
@@ -595,7 +647,7 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
       child: Column(
         children: [
           _buildDenomGrid(_closeDenomCtrl),
-          const SizedBox(height: 8), // Khoảng cách nhỏ giữa grid mệnh giá và chuyển khoản
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
@@ -611,16 +663,29 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
         ],
       ),
     ),
-    const SizedBox(height: 8), // Giảm khoảng cách
+    const SizedBox(height: 8),
     _SectionCard(
       title: 'Ghi chú chi phí phát sinh',
       icon: Icons.notes_outlined,
       child: TextField(
         controller: _noteCtrl,
-        maxLines: 2,
-        decoration: const InputDecoration(
-          border: OutlineInputBorder(),
-          prefixIcon: Icon(Icons.notes_outlined),
+        maxLines: 3,
+        decoration: InputDecoration(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          hintText: 'Nhập ghi chú chi phí (nếu có)...',
+          hintStyle: TextStyle(color: Colors.grey.shade500),
         ),
       ),
     ),

@@ -9,15 +9,23 @@ class InventoryHistoryController extends GetxController {
   var currentPage = 0.obs;
   final scrollController = ScrollController();
 
+  int? ingredientId;
+  String ingredientName = '';
+
   @override
   void onInit() {
     super.onInit();
-    fetchLogs(); // load lần đầu
+    // Nhận argument từ IngredientListScreen
+    final args = Get.arguments;
+    if (args is IngredientModel) {
+      ingredientId = args.id;
+      ingredientName = args.name;
+    }
+    fetchLogs();
     scrollController.addListener(_onScroll);
   }
 
   void _onScroll() {
-    // Debounce: chỉ load khi gần cuối và không đang loading
     if (scrollController.position.pixels >= scrollController.position.maxScrollExtent - 300 &&
         !isLoading.value &&
         hasMore.value) {
@@ -27,20 +35,18 @@ class InventoryHistoryController extends GetxController {
 
   Future<void> fetchLogs({bool loadMore = false}) async {
     if (isLoading.value) return;
-
     isLoading.value = true;
-    update(); // rebuild UI để hiện loading
+    update();
 
     if (!loadMore) {
       currentPage.value = 0;
       logs.clear();
     }
 
-    print("Fetching page: ${currentPage.value}"); // debug
-
     final result = await SellerService.getInventoryLogs(
       page: currentPage.value,
       size: 20,
+      ingredientId: ingredientId, // ← filter theo ingredient
     );
 
     if (result.isSuccess && result.data != null) {
@@ -48,19 +54,13 @@ class InventoryHistoryController extends GetxController {
       logs.addAll(paginated.content);
       currentPage.value++;
       hasMore.value = paginated.hasMore;
-
-      print("Loaded ${paginated.content.length} items, hasMore: ${hasMore.value}");
     } else {
-      Get.snackbar(
-        'Lỗi',
-        result.message ?? 'Không tải được lịch sử kho',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      print("API error: ${result.message}");
+      Get.snackbar('Lỗi', result.message ?? 'Không tải được lịch sử kho',
+          snackPosition: SnackPosition.BOTTOM);
     }
 
     isLoading.value = false;
-    update(); // rebuild UI sau khi load xong
+    update();
   }
 
   @override

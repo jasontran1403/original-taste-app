@@ -1,3 +1,4 @@
+// views/ui/general/category/category_edit_screen.dart
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -27,23 +28,17 @@ class CategoryEditScreen extends StatefulWidget {
   State<CategoryEditScreen> createState() => _CategoryEditScreenState();
 }
 
-class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, WidgetsBindingObserver {
+class _CategoryEditScreenState extends State<CategoryEditScreen>
+    with UIMixin, WidgetsBindingObserver {
   late CategoryEditController controller;
-  late OutlineInputBorder _outlineInputBorder;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-
     controller = Get.put(
       CategoryEditController(),
       tag: 'category_edit_${DateTime.now().millisecondsSinceEpoch}',
-    );
-
-    _outlineInputBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: contentTheme.secondary.withValues(alpha: 0.4)),
     );
   }
 
@@ -54,9 +49,13 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
   }
 
   @override
-  void didChangeMetrics() {
-    setState(() {});
-  }
+  void didChangeMetrics() => setState(() {});
+
+  OutlineInputBorder get outlineInputBorder => OutlineInputBorder(
+    borderRadius: BorderRadius.circular(8),
+    borderSide: BorderSide(
+        color: contentTheme.secondary.withValues(alpha: 0.4)),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +90,6 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
     );
   }
 
-  // ── Upload section ────────────────────────────────────────────────
   Widget _buildImageUpload() {
     return MyCard(
       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
@@ -101,28 +99,66 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: MySpacing.all(20),
+            padding: MySpacing.all(0),
             child: Row(
               children: [
-                MyText.titleMedium(
-                  'Ảnh danh mục',
-                  style: TextStyle(
-                    fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                Padding(
+                  padding: MySpacing.all(20),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Nút "← Quay lại" ở bên trái
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child:
+                        MyContainer.bordered(
+                          onTap: () => Get.back(),
+                          color: Colors.transparent,
+                          borderRadiusAll: 10,
+                          padding: MySpacing.xy(12, 8),
+                          borderColor: contentTheme.secondary.withOpacity(0.4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.arrow_back_rounded, size: 16, color: contentTheme.secondary),
+                              MySpacing.width(6),
+                              MyText.bodyMedium('Quay lại', color: contentTheme.secondary, fontWeight: 600),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: MyText.titleMedium(
+                    'Ảnh danh mục',
+                    style: TextStyle(
+                      fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 if (controller.isUploading) ...[
-                  MySpacing.width(12),
-                  SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: contentTheme.primary)),
+                  SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: contentTheme.primary),
+                  ),
                   MySpacing.width(8),
-                  MyText.bodySmall('Đang upload...', color: contentTheme.primary),
+                  MyText.bodySmall('Đang upload...',
+                      color: contentTheme.primary),
                 ],
-                if (controller.uploadedImageUrl != null && !controller.isUploading) ...[
+                if (controller.uploadedImageUrl != null &&
+                    !controller.isUploading) ...[
                   MySpacing.width(12),
-                  Icon(Icons.check_circle, color: contentTheme.success, size: 18),
+                  Icon(Icons.check_circle,
+                      color: contentTheme.success, size: 18),
                   MySpacing.width(4),
-                  MyText.bodySmall('Đã upload', color: contentTheme.success),
+                  MyText.bodySmall('Đã upload',
+                      color: contentTheme.success),
                 ],
               ],
             ),
@@ -138,20 +174,18 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
   }
 
   Widget _buildImageContent() {
-    if ((controller.currentImageUrl != null || controller.uploadedImageUrl != null) && controller.files.isEmpty) {
+    if ((controller.currentImageUrl != null ||
+        controller.uploadedImageUrl != null) &&
+        controller.files.isEmpty) {
       return _buildImagePreview();
     }
-
-    if (controller.files.isNotEmpty) {
-      return _buildFileList();
-    }
-
+    if (controller.files.isNotEmpty) return _buildFileList();
     return _buildUploadBox();
   }
 
   Widget _buildImagePreview() {
-    final imageUrl = controller.uploadedImageUrl ?? controller.currentImageUrl;
-
+    final imageUrl =
+        controller.uploadedImageUrl ?? controller.currentImageUrl;
     return MyContainer(
       onTap: controller.isUploading ? null : controller.pickFiles,
       borderRadiusAll: 12,
@@ -173,7 +207,8 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: controller.isUploading ? null : controller.pickFiles,
+                onTap:
+                controller.isUploading ? null : controller.pickFiles,
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   decoration: BoxDecoration(
@@ -183,11 +218,9 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.camera_alt,
-                        size: 48,
-                        color: Colors.white.withOpacity(0.9),
-                      ),
+                      Icon(Icons.camera_alt,
+                          size: 48,
+                          color: Colors.white.withOpacity(0.9)),
                       MySpacing.height(8),
                       Text(
                         'Nhấn để thay đổi ảnh',
@@ -220,7 +253,8 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
             child: Wrap(
               spacing: 12,
               runSpacing: 12,
-              children: controller.files.mapIndexed(
+              children: controller.files
+                  .mapIndexed(
                     (index, file) => MyContainer.bordered(
                   borderRadiusAll: 12,
                   paddingAll: 16,
@@ -232,20 +266,30 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
                         height: 44,
                         width: 44,
                         borderRadiusAll: 8,
-                        color: contentTheme.primary.withValues(alpha: 0.1),
+                        color: contentTheme.primary
+                            .withValues(alpha: 0.1),
                         paddingAll: 0,
-                        child: Icon(controller.getFileIcon(file.name), size: 20, color: contentTheme.primary),
+                        child: Icon(
+                            controller.getFileIcon(file.name),
+                            size: 20,
+                            color: contentTheme.primary),
                       ),
                       MySpacing.height(8),
-                      MyText.bodySmall(file.name, fontWeight: 700, muted: true, maxLines: 2, overflow: TextOverflow.ellipsis),
+                      MyText.bodySmall(file.name,
+                          fontWeight: 700,
+                          muted: true,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
-              ).toList(),
+              )
+                  .toList(),
             ),
           ),
         ),
-        if (controller.currentImageUrl != null || controller.uploadedImageUrl != null) ...[
+        if (controller.currentImageUrl != null ||
+            controller.uploadedImageUrl != null) ...[
           MySpacing.height(12),
           MyContainer.bordered(
             onTap: () {
@@ -258,9 +302,11 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.arrow_back, size: 16, color: contentTheme.primary),
+                Icon(Icons.arrow_back,
+                    size: 16, color: contentTheme.primary),
                 MySpacing.width(4),
-                MyText.bodySmall('Quay lại ảnh hiện tại', color: contentTheme.primary),
+                MyText.bodySmall('Quay lại ảnh hiện tại',
+                    color: contentTheme.primary),
               ],
             ),
           ),
@@ -278,21 +324,21 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
         padding: MySpacing.xy(0, 32),
         child: Column(
           children: [
-            Icon(Boxicons.bx_cloud_upload, size: 48, color: contentTheme.primary),
+            Icon(Boxicons.bx_cloud_upload,
+                size: 48, color: contentTheme.primary),
             MySpacing.height(16),
             Wrap(
               alignment: WrapAlignment.center,
               spacing: 4,
               children: [
                 MyText.bodyLarge('Kéo thả ảnh vào đây, hoặc'),
-                MyText.bodyLarge('chọn file', color: contentTheme.primary),
+                MyText.bodyLarge('chọn file',
+                    color: contentTheme.primary),
               ],
             ),
             MySpacing.height(8),
-            MyText.bodySmall(
-              'Hỗ trợ: PNG, JPG, WEBP (200×200)',
-              muted: true,
-            ),
+            MyText.bodySmall('Hỗ trợ: PNG, JPG, WEBP (200×200)',
+                muted: true),
           ],
         ),
       ),
@@ -300,10 +346,11 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
   }
 
   Widget _imagePlaceholder() => Center(
-    child: Icon(Icons.category_outlined, size: 48, color: contentTheme.secondary.withValues(alpha: 0.3)),
+    child: Icon(Icons.category_outlined,
+        size: 48,
+        color: contentTheme.secondary.withValues(alpha: 0.3)),
   );
 
-  // ── General info ──────────────────────────────────────────────────
   Widget _buildGeneralInfo() {
     return MyCard(
       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
@@ -314,13 +361,18 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
         children: [
           Padding(
             padding: MySpacing.all(20),
-            child: MyText.titleMedium(
-              'Thông tin danh mục',
-              style: TextStyle(
-                fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                MyText.titleMedium(
+                  'Thông tin category',
+                  style: TextStyle(
+                    fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
           const Divider(height: 0),
@@ -335,8 +387,9 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
                   controller: controller.nameController,
                   style: MyTextStyle.bodyMedium(),
                   onChanged: (_) => controller.update(),
-                  validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Vui lòng nhập tên danh mục' : null,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Vui lòng nhập tên danh mục'
+                      : null,
                   decoration: InputDecoration(
                     border: outlineInputBorder,
                     focusedBorder: outlineInputBorder,
@@ -359,7 +412,6 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
     );
   }
 
-  // ── Action bar ────────────────────────────────────────────────────
   Widget _buildActions() {
     return MyContainer(
       paddingAll: 20,
@@ -378,7 +430,7 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
           ),
           MySpacing.width(12),
           MyContainer(
-            onTap: () => _handleSave(),
+            onTap: _handleSave,
             color: contentTheme.primary,
             borderRadiusAll: 12,
             padding: MySpacing.xy(24, 12),
@@ -386,9 +438,13 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
                 ? SizedBox(
               height: 18,
               width: 18,
-              child: CircularProgressIndicator(strokeWidth: 2, color: contentTheme.onPrimary),
+              child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: contentTheme.onPrimary),
             )
-                : MyText.bodyMedium('Lưu thay đổi', fontWeight: 600, color: contentTheme.onPrimary),
+                : MyText.bodyMedium('Lưu thay đổi',
+                fontWeight: 600,
+                color: contentTheme.onPrimary),
           ),
         ],
       ),
@@ -398,14 +454,8 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> with UIMixin, W
   Future<void> _handleSave() async {
     final success = await controller.save();
     if (success) {
+      await Future.delayed(const Duration(milliseconds: 1200));
       Get.back(result: true);
     }
-  }
-
-  OutlineInputBorder get outlineInputBorder {
-    return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: contentTheme.secondary.withValues(alpha: 0.4)),
-    );
   }
 }

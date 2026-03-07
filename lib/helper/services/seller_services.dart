@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 
 import 'api_helper.dart';
@@ -6,6 +7,79 @@ import 'api_helper.dart';
 // ══════════════════════════════════════════════════════════════════
 // MODELS
 // ══════════════════════════════════════════════════════════════════
+class ManualImportItem {
+  final int ingredientId;
+  final double quantity;
+  final int? expiryDate; // epoch-millis
+
+  ManualImportItem({
+    required this.ingredientId,
+    required this.quantity,
+    this.expiryDate,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'ingredientId': ingredientId,
+    'quantity': quantity,
+    if (expiryDate != null) 'expiryDate': expiryDate,
+  };
+}
+
+class ManualImportResult {
+  final String batchCode;
+  final int totalItems;
+  final List<ManualImportItemResult> items;
+
+  ManualImportResult({
+    required this.batchCode,
+    required this.totalItems,
+    required this.items,
+  });
+
+  factory ManualImportResult.fromJson(Map<String, dynamic> json) =>
+      ManualImportResult(
+        batchCode: json['batchCode'] ?? '',
+        totalItems: json['totalItems'] ?? 0,
+        items: (json['items'] as List<dynamic>? ?? [])
+            .map((e) => ManualImportItemResult.fromJson(e))
+            .toList(),
+      );
+}
+
+class ManualImportItemResult {
+  final int ingredientId;
+  final String ingredientName;
+  final String unit;
+  final double quantityAdded;
+  final double quantityBefore;
+  final double quantityAfter;
+  final int? effectiveExpiryDate;
+  final String logReason;
+
+  ManualImportItemResult({
+    required this.ingredientId,
+    required this.ingredientName,
+    required this.unit,
+    required this.quantityAdded,
+    required this.quantityBefore,
+    required this.quantityAfter,
+    this.effectiveExpiryDate,
+    required this.logReason,
+  });
+
+  factory ManualImportItemResult.fromJson(Map<String, dynamic> json) =>
+      ManualImportItemResult(
+        ingredientId: json['ingredientId'] ?? 0,
+        ingredientName: json['ingredientName'] ?? '',
+        unit: json['unit'] ?? '',
+        quantityAdded: double.tryParse(json['quantityAdded']?.toString() ?? '0') ?? 0,
+        quantityBefore: double.tryParse(json['quantityBefore']?.toString() ?? '0') ?? 0,
+        quantityAfter: double.tryParse(json['quantityAfter']?.toString() ?? '0') ?? 0,
+        effectiveExpiryDate: json['effectiveExpiryDate'],
+        logReason: json['logReason'] ?? '',
+      );
+}
+
 class PaginatedResponse<T> {
   final List<T> content;
   final int totalPages;
@@ -37,9 +111,9 @@ class InventoryLogModel {
   final String ingredientName;
   final int createdAt;
   final String purpose;
-  final double quantity; // luôn dương từ backend
+  final double quantity;
   final String status;
-  final String? unit; // thêm field này
+  final String? unit;
 
   InventoryLogModel({
     this.id,
@@ -59,7 +133,7 @@ class InventoryLogModel {
       purpose: json['purpose'] ?? 'Không rõ',
       quantity: (json['quantity'] as num?)?.toDouble() ?? 0.0,
       status: json['status'] ?? 'Completed',
-      unit: json['unit'], // backend cần trả thêm field unit nếu có
+      unit: json['unit'],
     );
   }
 }
@@ -98,9 +172,9 @@ class CategoryModel {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is CategoryModel &&
-          runtimeType == other.runtimeType &&
-          id == other.id;
+          other is CategoryModel &&
+              runtimeType == other.runtimeType &&
+              id == other.id;
 
   @override
   int get hashCode => id.hashCode;
@@ -138,7 +212,7 @@ class IngredientModel {
         imageUrl: json['imageUrl'],
         unit: json['unit'] ?? '',
         stockQuantity:
-            double.tryParse(json['stockQuantity']?.toString() ?? '0') ?? 0,
+        double.tryParse(json['stockQuantity']?.toString() ?? '0') ?? 0,
         importDate: json['importDate'],
         expiryDate: json['expiryDate'],
         nearExpiryCount: json['nearExpiryCount'] ?? 0,
@@ -166,9 +240,9 @@ class ProductVariantModel {
         variantName: json['variantName'] ?? '',
         isDefault: json['isDefault'] ?? false,
         ingredients:
-            (json['ingredients'] as List<dynamic>? ?? [])
-                .map((e) => VariantIngredientItem.fromJson(e))
-                .toList(),
+        (json['ingredients'] as List<dynamic>? ?? [])
+            .map((e) => VariantIngredientItem.fromJson(e))
+            .toList(),
       );
 }
 
@@ -197,28 +271,64 @@ class VariantIngredientItem {
       );
 }
 
-class ProductPriceModel {
+// ─────────────────────────────────────────────────────────────────
+// ProductPriceTierModel
+// ─────────────────────────────────────────────────────────────────
+class ProductPriceTierModel {
   final int id;
-  final String priceName;
+  final String tierName;
+  final double minQuantity;
+  final double? maxQuantity; // null = unlimited
   final double price;
-  final bool isDefault;
+  final int sortOrder;
+  final bool isActive;
 
-  ProductPriceModel({
+  const ProductPriceTierModel({
     required this.id,
-    required this.priceName,
+    required this.tierName,
+    required this.minQuantity,
+    this.maxQuantity,
     required this.price,
-    required this.isDefault,
+    required this.sortOrder,
+    required this.isActive,
   });
 
-  factory ProductPriceModel.fromJson(Map<String, dynamic> json) =>
-      ProductPriceModel(
+  factory ProductPriceTierModel.fromJson(Map<String, dynamic> json) =>
+      ProductPriceTierModel(
         id: json['id'] ?? 0,
-        priceName: json['priceName'] ?? '',
+        tierName: json['tierName'] ?? '',
+        minQuantity:
+        double.tryParse(json['minQuantity']?.toString() ?? '0') ?? 0,
+        maxQuantity: json['maxQuantity'] != null
+            ? double.tryParse(json['maxQuantity'].toString())
+            : null,
         price: double.tryParse(json['price']?.toString() ?? '0') ?? 0,
-        isDefault: json['isDefault'] ?? false,
+        sortOrder: json['sortOrder'] ?? 0,
+        isActive: json['isActive'] ?? true,
       );
+
+  Map<String, dynamic> toJson() => {
+    'tierName': tierName,
+    'minQuantity': minQuantity,
+    if (maxQuantity != null) 'maxQuantity': maxQuantity,
+    'price': price,
+    'sortOrder': sortOrder,
+  };
+
+  /// "0 – <10" hoặc "≥ 20"
+  String get rangeLabel {
+    final mn = _fq(minQuantity);
+    if (maxQuantity == null) return '≥ $mn';
+    return '$mn – <${_fq(maxQuantity!)}';
+  }
+
+  String _fq(double q) =>
+      q == q.truncateToDouble() ? q.toInt().toString() : q.toString();
 }
 
+// ─────────────────────────────────────────────────────────────────
+// ProductModel  (basePrice + priceTiers, không còn prices)
+// ─────────────────────────────────────────────────────────────────
 class ProductModel {
   final int id;
   final String name;
@@ -227,15 +337,14 @@ class ProductModel {
   final String? imageUrl;
   final int? categoryId;
   final String? categoryName;
-  final double? defaultPrice;
-  final String? defaultPriceName;
+  final double basePrice;
+  final List<ProductPriceTierModel> priceTiers;
   final List<ProductVariantModel> variants;
-  final List<ProductPriceModel> prices;
+  final int vatRate;
   final int? createdAt;
   final int? updatedAt;
-  final int vatRate; // ← THÊM FIELD NÀY (0,5,8,10)
 
-  ProductModel({
+  const ProductModel({
     required this.id,
     required this.name,
     this.description,
@@ -243,13 +352,12 @@ class ProductModel {
     this.imageUrl,
     this.categoryId,
     this.categoryName,
-    this.defaultPrice,
-    this.defaultPriceName,
+    required this.basePrice,
+    required this.priceTiers,
     required this.variants,
-    required this.prices,
+    this.vatRate = 0,
     this.createdAt,
     this.updatedAt,
-    this.vatRate = 0, // mặc định 0
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) => ProductModel(
@@ -259,23 +367,159 @@ class ProductModel {
     unit: json['unit'],
     imageUrl: json['imageUrl'],
     categoryId: json['categoryId'],
-    categoryName: json['categoryName'],
-    defaultPrice: double.tryParse(json['defaultPrice']?.toString() ?? ''),
-    defaultPriceName: json['defaultPriceName'],
-    variants:
-        (json['variants'] as List<dynamic>? ?? [])
-            .map((e) => ProductVariantModel.fromJson(e))
-            .toList(),
-    prices:
-        (json['prices'] as List<dynamic>? ?? [])
-            .map((e) => ProductPriceModel.fromJson(e))
-            .toList(),
+    categoryName: json['categoryName'] ?? json['category'],
+    basePrice:
+    double.tryParse(json['basePrice']?.toString() ?? '0') ?? 0,
+    priceTiers: (() {
+      // Backend có thể trả 'priceTiers' hoặc 'tiers' tùy version
+      final raw = (json['priceTiers'] as List<dynamic>?)
+          ?? (json['tiers'] as List<dynamic>?)
+          ?? [];
+      return raw
+          .map((e) => ProductPriceTierModel.fromJson(e))
+          .where((t) => t.isActive)
+          .toList()
+        ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    })(),
+    variants: (json['variants'] as List<dynamic>? ?? [])
+        .map((e) => ProductVariantModel.fromJson(e))
+        .toList(),
+    vatRate: json['vatRate'] ?? 0,
     createdAt: json['createdAt'],
     updatedAt: json['updatedAt'],
-    vatRate: json['vatRate'] ?? 0, // ← map từ JSON
   );
+
+  /// Tier phù hợp với qty (auto-detect)
+  ProductPriceTierModel? tierForQty(double qty) {
+    ProductPriceTierModel? best;
+    for (final t in priceTiers) {
+      if (qty >= t.minQuantity) {
+        final max = t.maxQuantity;
+        if (max == null || qty < max) best = t;
+      }
+    }
+    return best;
+  }
+
+  /// Tier đầu tiên (default khi chế độ Sỉ)
+  ProductPriceTierModel? get firstTier =>
+      priceTiers.isNotEmpty ? priceTiers.first : null;
 }
 
+// ─────────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────────
+enum OrderMode {
+  retail,
+  wholesale;
+
+  String get label => this == retail ? 'Khách lẻ' : 'Khách sỉ';
+}
+
+enum ItemPriceMode {
+  base,
+  tier,
+  discountPercent;
+
+  String get apiValue => switch (this) {
+    base            => 'BASE',
+    tier            => 'TIER',
+    discountPercent => 'DISCOUNT_PERCENT',
+  };
+
+  static ItemPriceMode fromApi(String? v) => switch (v?.toUpperCase()) {
+    'TIER'             => tier,
+    'DISCOUNT_PERCENT' => discountPercent,
+    _                  => base,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SelectedCustomer
+// ─────────────────────────────────────────────────────────────────
+class SelectedCustomer {
+  final int? id;
+  final String name;
+  final String phone;
+  final String email;
+  final String address;
+  final int discountRate;
+
+  SelectedCustomer({
+    this.id,
+    required this.name,
+    required this.phone,
+    this.email = '',
+    this.address = '',
+    this.discountRate = 0,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// CartItem
+// ─────────────────────────────────────────────────────────────────
+class CartItem {
+  final ProductModel product;
+  final ProductVariantModel? variant;
+  final TextEditingController qtyController;
+  double quantity;
+
+  ItemPriceMode priceMode;
+  ProductPriceTierModel? selectedTier;
+  int? discountPercent;
+
+  CartItem({
+    required this.product,
+    this.variant,
+    required this.quantity,
+    required OrderMode orderMode,
+  })  : qtyController = TextEditingController(text: _fmtQ(quantity)),
+        priceMode = ItemPriceMode.tier,
+        selectedTier = null,
+        discountPercent = null;
+
+  void resetToMode(OrderMode mode) {
+    priceMode = ItemPriceMode.tier;
+    selectedTier = null;
+    discountPercent = null;
+  }
+
+  double baseForDiscount(OrderMode orderMode) {
+    if (orderMode == OrderMode.retail) return product.basePrice;
+    return product.firstTier?.price ?? product.basePrice;
+  }
+
+  double get unitPrice {
+    switch (priceMode) {
+      case ItemPriceMode.base:
+        return product.basePrice;
+      case ItemPriceMode.discountPercent:
+        final pct = discountPercent ?? 0;
+        return product.basePrice * (100 - pct) / 100;
+      case ItemPriceMode.tier:
+        final tier = selectedTier ?? product.tierForQty(quantity);
+        return tier?.price ?? product.basePrice;
+    }
+  }
+
+  ProductPriceTierModel? get activeTier {
+    if (priceMode != ItemPriceMode.tier) return null;
+    return selectedTier ?? product.tierForQty(quantity);
+  }
+
+  double get subtotal => unitPrice * quantity;
+
+  double get vatAmount => subtotal * product.vatRate / 100;
+
+  static String _fmtQ(double q) =>
+      q == q.truncateToDouble() ? q.toInt().toString() : q.toStringAsFixed(2);
+
+  void dispose() => qtyController.dispose();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Customer models
+// ─────────────────────────────────────────────────────────────────
 class CustomerAddressModel {
   final int? id;
   final String address;
@@ -294,7 +538,8 @@ class CustomerAddressModel {
         isDefault: json['isDefault'] ?? false,
       );
 
-  Map<String, dynamic> toJson() => {'address': address, 'isDefault': isDefault};
+  Map<String, dynamic> toJson() =>
+      {'address': address, 'isDefault': isDefault};
 }
 
 class CustomerModel {
@@ -327,10 +572,9 @@ class CustomerModel {
     email: json['email'],
     discountRate: json['discountRate'] ?? 0,
     isActive: json['isActive'] ?? true,
-    addresses:
-        (json['addresses'] as List<dynamic>? ?? [])
-            .map((e) => CustomerAddressModel.fromJson(e))
-            .toList(),
+    addresses: (json['addresses'] as List<dynamic>? ?? [])
+        .map((e) => CustomerAddressModel.fromJson(e))
+        .toList(),
     createdAt: json['createdAt'],
     updatedAt: json['updatedAt'],
   );
@@ -339,6 +583,9 @@ class CustomerModel {
       addresses.where((a) => a.isDefault).firstOrNull ?? addresses.firstOrNull;
 }
 
+// ─────────────────────────────────────────────────────────────────
+// Order item ingredient
+// ─────────────────────────────────────────────────────────────────
 class OrderItemIngredientModel {
   final int ingredientId;
   final String ingredientName;
@@ -360,11 +607,14 @@ class OrderItemIngredientModel {
         ingredientName: json['ingredientName'] ?? '',
         ingredientImageUrl: json['ingredientImageUrl'],
         quantityUsed:
-            double.tryParse(json['quantityUsed']?.toString() ?? '0') ?? 0,
+        double.tryParse(json['quantityUsed']?.toString() ?? '0') ?? 0,
         unit: json['unit'] ?? '',
       );
 }
 
+// ─────────────────────────────────────────────────────────────────
+// OrderItemModel  (basePrice/priceMode/tier thay priceName/defaultPrice)
+// ─────────────────────────────────────────────────────────────────
 class OrderItemModel {
   final int id;
   final int productId;
@@ -372,25 +622,35 @@ class OrderItemModel {
   final String? productImageUrl;
   final int? variantId;
   final String? variantName;
-  final String priceName;
+  final double basePrice;
   final double unitPrice;
-  final double defaultPrice;
+  final String priceMode;       // BASE | TIER | DISCOUNT_PERCENT
+  final int? tierId;
+  final String? tierName;
+  final int? discountPercent;
+  final int vatRate;
+  final double vatAmount;
   final double quantity;
   final double subtotal;
   final String? unit;
   final String? notes;
   final List<OrderItemIngredientModel> ingredientsUsed;
 
-  OrderItemModel({
+  const OrderItemModel({
     required this.id,
     required this.productId,
     required this.productName,
     this.productImageUrl,
     this.variantId,
     this.variantName,
-    required this.priceName,
+    required this.basePrice,
     required this.unitPrice,
-    required this.defaultPrice,
+    required this.priceMode,
+    this.tierId,
+    this.tierName,
+    this.discountPercent,
+    this.vatRate = 0,
+    this.vatAmount = 0,
     required this.quantity,
     required this.subtotal,
     this.unit,
@@ -405,20 +665,43 @@ class OrderItemModel {
     productImageUrl: json['productImageUrl'],
     variantId: json['variantId'],
     variantName: json['variantName'],
-    priceName: json['priceName'] ?? '',
-    unitPrice: double.tryParse(json['unitPrice']?.toString() ?? '0') ?? 0,
-    defaultPrice: double.tryParse(json['defaultPrice']?.toString() ?? '0') ?? 0,
-    quantity: double.tryParse(json['quantity']?.toString() ?? '0') ?? 0,
-    subtotal: double.tryParse(json['subtotal']?.toString() ?? '0') ?? 0,
+    basePrice:
+    double.tryParse(json['basePrice']?.toString() ?? '0') ?? 0,
+    unitPrice:
+    double.tryParse(json['unitPrice']?.toString() ?? '0') ?? 0,
+    priceMode: json['priceMode'] ?? 'BASE',
+    tierId: json['tierId'],
+    tierName: json['tierName'],
+    discountPercent: json['discountPercent'],
+    vatRate: json['vatRate'] ?? 0,
+    vatAmount:
+    double.tryParse(json['vatAmount']?.toString() ?? '0') ?? 0,
+    quantity:
+    double.tryParse(json['quantity']?.toString() ?? '0') ?? 0,
+    subtotal:
+    double.tryParse(json['subtotal']?.toString() ?? '0') ?? 0,
     unit: json['unit'],
     notes: json['notes'],
-    ingredientsUsed:
-        (json['ingredientsUsed'] as List<dynamic>? ?? [])
-            .map((e) => OrderItemIngredientModel.fromJson(e))
-            .toList(),
+    ingredientsUsed: (json['ingredientsUsed'] as List<dynamic>? ?? [])
+        .map((e) => OrderItemIngredientModel.fromJson(e))
+        .toList(),
   );
+
+  /// Label hiển thị chế độ giá (dùng ở order_detail_screen)
+  String get priceModeLabel => switch (priceMode) {
+    'TIER'             => tierName != null ? 'Khung: $tierName' : 'Giá khung',
+    'DISCOUNT_PERCENT' =>
+    discountPercent != null ? 'Giảm $discountPercent%' : 'Giảm giá',
+    _                  => 'Giá gốc',
+  };
+
+  /// Alias backward-compat — order_detail_screen dùng item.priceName
+  String get priceName => priceModeLabel;
 }
 
+// ─────────────────────────────────────────────────────────────────
+// OrderModel
+// ─────────────────────────────────────────────────────────────────
 class OrderModel {
   final int id;
   final String orderCode;
@@ -428,6 +711,7 @@ class OrderModel {
   final double totalAmount;
   final double discountAmount;
   final double finalAmount;
+  final double vatAmount;
   final String status;
   final String paymentStatus;
   final String? paymentMethod;
@@ -450,6 +734,7 @@ class OrderModel {
     this.notes,
     this.createdAt,
     required this.items,
+    this.vatAmount = 0,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) => OrderModel(
@@ -458,46 +743,54 @@ class OrderModel {
     customerName: json['customerName'],
     customerPhone: json['customerPhone'],
     shippingAddress: json['shippingAddress'],
-    totalAmount: double.tryParse(json['totalAmount']?.toString() ?? '0') ?? 0,
+    totalAmount:
+    double.tryParse(json['totalAmount']?.toString() ?? '0') ?? 0,
     discountAmount:
-        double.tryParse(json['discountAmount']?.toString() ?? '0') ?? 0,
-    finalAmount: double.tryParse(json['finalAmount']?.toString() ?? '0') ?? 0,
+    double.tryParse(json['discountAmount']?.toString() ?? '0') ?? 0,
+    finalAmount:
+    double.tryParse(json['finalAmount']?.toString() ?? '0') ?? 0,
     status: json['status'] ?? '',
     paymentStatus: json['paymentStatus'] ?? '',
     paymentMethod: json['paymentMethod'],
     notes: json['notes'],
     createdAt: json['createdAt'],
-    items:
-        (json['items'] as List<dynamic>? ?? [])
-            .map((e) => OrderItemModel.fromJson(e))
-            .toList(),
+    vatAmount:
+    double.tryParse(json['vatAmount']?.toString() ?? '0') ?? 0,
+    items: (json['items'] as List<dynamic>? ?? [])
+        .map((e) => OrderItemModel.fromJson(e))
+        .toList(),
   );
 }
 
-// ══════════════════════════════════════════════════════════════════
-// REQUEST MODELS
-// ══════════════════════════════════════════════════════════════════
-
+// ─────────────────────────────────────────────────────────────────
+// Request models
+// ─────────────────────────────────────────────────────────────────
 class CreateOrderItemRequest {
   final int productId;
   final int? variantId;
-  final int priceId;
   final double quantity;
+  final String priceMode;
+  final int? tierId;
+  final int? discountPercent;
   final String? notes;
 
   CreateOrderItemRequest({
     required this.productId,
     this.variantId,
-    required this.priceId,
     required this.quantity,
+    required this.priceMode,
+    this.tierId,
+    this.discountPercent,
     this.notes,
   });
 
   Map<String, dynamic> toJson() => {
     'productId': productId,
     if (variantId != null) 'variantId': variantId,
-    'priceId': priceId,
     'quantity': quantity,
+    'priceMode': priceMode,
+    if (tierId != null) 'tierId': tierId,
+    if (discountPercent != null) 'discountPercent': discountPercent,
     if (notes != null && notes!.isNotEmpty) 'notes': notes,
   };
 }
@@ -507,8 +800,9 @@ class CreateOrderRequest {
   final String? customerPhone;
   final String? customerEmail;
   final String? shippingAddress;
-  final String paymentMethod; // CASH | BANK_TRANSFER
+  final String paymentMethod;
   final String? notes;
+  final String? type;
   final List<CreateOrderItemRequest> items;
 
   CreateOrderRequest({
@@ -516,6 +810,7 @@ class CreateOrderRequest {
     this.customerPhone,
     this.customerEmail,
     this.shippingAddress,
+    this.type,
     required this.paymentMethod,
     this.notes,
     required this.items,
@@ -526,6 +821,7 @@ class CreateOrderRequest {
     if (customerPhone != null) 'customerPhone': customerPhone,
     if (customerEmail != null) 'customerEmail': customerEmail,
     if (shippingAddress != null) 'shippingAddress': shippingAddress,
+    'type': type,
     'paymentMethod': paymentMethod,
     if (notes != null) 'notes': notes,
     'items': items.map((e) => e.toJson()).toList(),
@@ -535,7 +831,6 @@ class CreateOrderRequest {
 // ══════════════════════════════════════════════════════════════════
 // SELLER SERVICE
 // ══════════════════════════════════════════════════════════════════
-
 class SellerService {
   // ── BASE URL image helper ──────────────────────────────────────
   static String buildImageUrl(String? path) {
@@ -549,7 +844,6 @@ class SellerService {
       '/api/seller/orders/$orderId/invoice',
       requireAuth: true,
       fromData: (data) {
-        // Server trả về JSON kiểu { "code": 900, "message": "...", ... }
         if (data is Map<String, dynamic>) {
           return data['message']?.toString() ??
               'Đã tạo và gửi hóa đơn thành công qua Telegram';
@@ -575,19 +869,26 @@ class SellerService {
     );
   }
 
-  /// Lấy lịch sử xuất/nhập kho với phân trang
   static Future<ApiResult<PaginatedResponse<InventoryLogModel>>>
-  getInventoryLogs({required int page, required int size}) async {
+  getInventoryLogs({
+    required int page,
+    required int size,
+    int? ingredientId,
+  }) async {
+    final params = {
+      'page': page.toString(),
+      'size': size.toString(),
+      if (ingredientId != null) 'ingredientId': ingredientId.toString(),
+    };
+
     return ApiHelper.get<PaginatedResponse<InventoryLogModel>>(
       '/api/seller/inventory/logs',
-      queryParams: {'page': page.toString(), 'size': size.toString()},
+      queryParams: params,
       fromData: (data) {
         if (data is Map<String, dynamic>) {
-          final content =
-              (data['content'] as List<dynamic>? ?? [])
-                  .map((e) => InventoryLogModel.fromJson(e))
-                  .toList();
-
+          final content = (data['content'] as List<dynamic>? ?? [])
+              .map((e) => InventoryLogModel.fromJson(e))
+              .toList();
           return PaginatedResponse<InventoryLogModel>(
             content: content,
             totalPages: data['totalPages'] ?? 1,
@@ -764,20 +1065,17 @@ class SellerService {
 
   static Future<ApiResult<String>> uploadProductImage(String filePath) async {
     return ApiHelper.uploadFile<String>(
-      '/api/upload/product-image', // ← đúng endpoint
+      '/api/upload/product-image',
       filePath: filePath,
-      fieldName: 'image', // ← đúng field name (không phải 'file')
+      fieldName: 'image',
       fromData: (data) {
-        // Response là Map {"imageUrl": "...", "filename": "..."}
-        // ApiHelper.uploadFile trả về data là Map, cần lấy 'imageUrl'
-        if (data is Map) {
-          return data['imageUrl']?.toString();
-        }
+        if (data is Map) return data['imageUrl']?.toString();
         return data?.toString();
       },
     );
   }
 
+  /// Tạo sản phẩm mới với basePrice + tiers (thay thế prices cũ)
   static Future<ApiResult<ProductModel>> createProduct({
     required String name,
     String? description,
@@ -785,10 +1083,10 @@ class SellerService {
     String? imageUrl,
     int? categoryId,
     String? categoryName,
-    required List<Map<String, dynamic>> prices,
-    List<Map<String, dynamic>>? variants,
+    required double basePrice,
+    required int vatRate,
+    List<Map<String, dynamic>>? tiers,
     List<Map<String, dynamic>>? ingredients,
-    required int vatRate, // ← THÊM PARAM NÀY
   }) async {
     return ApiHelper.post<ProductModel>(
       '/api/seller/products',
@@ -799,11 +1097,44 @@ class SellerService {
         if (imageUrl != null) 'imageUrl': imageUrl,
         if (categoryId != null) 'categoryId': categoryId,
         if (categoryName != null) 'category': categoryName,
-        'prices': prices,
-        if (variants != null && variants.isNotEmpty) 'variants': variants,
+        'basePrice': basePrice,
+        'vatRate': vatRate,
+        if (tiers != null && tiers.isNotEmpty) 'tiers': tiers,
         if (ingredients != null && ingredients.isNotEmpty)
           'ingredients': ingredients,
-        'vatRate': vatRate, // ← THÊM FIELD NÀY VÀO BODY
+      },
+      fromData: (data) => data != null ? ProductModel.fromJson(data) : null,
+    );
+  }
+
+  /// Cập nhật sản phẩm với basePrice + tiers
+  static Future<ApiResult<ProductModel>> updateProduct({
+    required int id,
+    required String name,
+    String? description,
+    String? unit,
+    String? imageUrl,
+    int? categoryId,
+    String? categoryName,
+    required double basePrice,
+    required int vatRate,
+    List<Map<String, dynamic>>? tiers,
+    List<Map<String, dynamic>>? ingredients,
+  }) async {
+    return ApiHelper.put<ProductModel>(
+      '/api/seller/products/$id',
+      body: {
+        'name': name,
+        if (description != null) 'description': description,
+        if (unit != null) 'unit': unit,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+        if (categoryId != null) 'categoryId': categoryId,
+        if (categoryName != null) 'category': categoryName,
+        'basePrice': basePrice,
+        'vatRate': vatRate,
+        if (tiers != null) 'tiers': tiers,
+        if (ingredients != null && ingredients.isNotEmpty)
+          'ingredients': ingredients,
       },
       fromData: (data) => data != null ? ProductModel.fromJson(data) : null,
     );
@@ -811,6 +1142,33 @@ class SellerService {
 
   static Future<ApiResult<dynamic>> deleteProduct(int id) async {
     return ApiHelper.delete<dynamic>('/api/seller/products/$id');
+  }
+
+  // ── Tier CRUD ─────────────────────────────────────────────────
+  static Future<ApiResult<ProductModel>> addProductTier(
+      int productId, Map<String, dynamic> tierData) async {
+    return ApiHelper.post<ProductModel>(
+      '/api/seller/products/$productId/tiers',
+      body: tierData,
+      fromData: (data) => data != null ? ProductModel.fromJson(data) : null,
+    );
+  }
+
+  static Future<ApiResult<ProductModel>> updateProductTier(
+      int productId, int tierId, Map<String, dynamic> tierData) async {
+    return ApiHelper.put<ProductModel>(
+      '/api/seller/products/$productId/tiers/$tierId',
+      body: tierData,
+      fromData: (data) => data != null ? ProductModel.fromJson(data) : null,
+    );
+  }
+
+  static Future<ApiResult<ProductModel>> deleteProductTier(
+      int productId, int tierId) async {
+    return ApiHelper.delete<ProductModel>(
+      '/api/seller/products/$productId/tiers/$tierId',
+      fromData: (data) => data != null ? ProductModel.fromJson(data) : null,
+    );
   }
 
   // ════════════════════════════════════════
@@ -837,8 +1195,7 @@ class SellerService {
   }
 
   static Future<ApiResult<OrderModel>> createOrder(
-    CreateOrderRequest request,
-  ) async {
+      CreateOrderRequest request) async {
     return ApiHelper.post<OrderModel>(
       '/api/seller/orders',
       body: request.toJson(),
@@ -871,8 +1228,7 @@ class SellerService {
   }
 
   static Future<ApiResult<CustomerModel?>> getCustomerByPhone(
-    String phone,
-  ) async {
+      String phone) async {
     return ApiHelper.get<CustomerModel?>(
       '/api/seller/customers/phone/$phone',
       fromData: (data) => data != null ? CustomerModel.fromJson(data) : null,
@@ -924,54 +1280,13 @@ class SellerService {
     return ApiHelper.delete<dynamic>('/api/seller/customers/$id');
   }
 
-  // helper/services/seller_services.dart
-  static Future<ApiResult<ProductModel>> updateProduct({
-    required int id,
-    required String name,
-    String? description,
-    String? unit,
-    String? imageUrl,
-    int? categoryId,
-    String? categoryName,
-    required List<Map<String, dynamic>> prices,
-    List<Map<String, dynamic>>? variants,
-    required int vatRate, // ← ĐÃ CÓ, nhưng cần dùng trong body
-  }) async {
-    return ApiHelper.put<ProductModel>(
-      '/api/seller/products/$id',
-      body: {
-        'name': name,
-        if (description != null) 'description': description,
-        if (unit != null) 'unit': unit,
-        if (imageUrl != null) 'imageUrl': imageUrl,
-        if (categoryId != null) 'categoryId': categoryId,
-        if (categoryName != null) 'category': categoryName,
-        'prices': prices,
-        if (variants != null && variants.isNotEmpty) 'variants': variants,
-        'vatRate': vatRate, // ← THÊM DÒNG NÀY (quan trọng nhất!)
-      },
-      fromData: (data) => data != null ? ProductModel.fromJson(data) : null,
-    );
-  }
-
-  static Future<ApiResult<ProductModel>> setDefaultPrice({
-    required int productId,
-    required int priceId,
-  }) async {
-    return ApiHelper.put<ProductModel>(
-      '/api/seller/products/$productId/prices/$priceId/set-default',
-      body: {}, // Empty body for PUT request
-      fromData: (data) => data != null ? ProductModel.fromJson(data) : null,
-    );
-  }
-
-  static Future<ApiResult<ProductModel>> removePrice({
-    required int productId,
-    required int priceId,
-  }) async {
-    return ApiHelper.delete<ProductModel>(
-      '/api/seller/products/$productId/prices/$priceId',
-      fromData: (data) => data != null ? ProductModel.fromJson(data) : null,
+  static Future<ApiResult<ManualImportResult>> manualImportIngredients(
+      List<ManualImportItem> items) async {
+    return ApiHelper.post<ManualImportResult>(
+      '/api/seller/ingredients/import',
+      body: {'items': items.map((e) => e.toJson()).toList()},
+      fromData: (data) =>
+      data != null ? ManualImportResult.fromJson(data) : null,
     );
   }
 }

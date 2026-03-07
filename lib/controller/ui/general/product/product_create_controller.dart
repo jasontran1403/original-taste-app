@@ -3,59 +3,78 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:original_taste/helper/services/seller_services.dart';
 
-// ── Giá item trong form ───────────────────────────────────────────
-class PriceFormItem {
+// ── Model cho mỗi dòng tier form ──────────────────────────────────
+class TierFormItem {
   final TextEditingController nameController;
+  final TextEditingController minQtyController;
+  final TextEditingController maxQtyController;
   final TextEditingController priceController;
-  bool isDefault;
+  int sortOrder;
 
-  PriceFormItem({
+  TierFormItem({
     String name = '',
+    String minQty = '0',
+    String maxQty = '',
     String price = '',
-    this.isDefault = false,
+    this.sortOrder = 0,
   })  : nameController = TextEditingController(text: name),
+        minQtyController = TextEditingController(text: minQty),
+        maxQtyController = TextEditingController(text: maxQty),
         priceController = TextEditingController(text: price);
+
+  bool get isValid =>
+      nameController.text.isNotEmpty &&
+          priceController.text.isNotEmpty &&
+          (double.tryParse(priceController.text) ?? -1) >= 0;
 
   void dispose() {
     nameController.dispose();
+    minQtyController.dispose();
+    maxQtyController.dispose();
     priceController.dispose();
   }
 
-  bool get isValid =>
-      nameController.text.trim().isNotEmpty &&
-          priceController.text.trim().isNotEmpty &&
-          (double.tryParse(priceController.text.trim()) ?? -1) >= 0;
+  Map<String, dynamic> toJson(int idx) => {
+    'tierName': nameController.text.trim(),
+    'minQuantity': double.tryParse(minQtyController.text.trim()) ?? 0.0,
+    'maxQuantity': maxQtyController.text.trim().isEmpty
+        ? null
+        : double.tryParse(maxQtyController.text.trim()),
+    'price': double.tryParse(priceController.text.trim()) ?? 0.0,
+    'sortOrder': idx,
+  };
 }
 
 class ProductCreateController extends GetxController {
   final formKey = GlobalKey<FormState>();
 
-  int selectedVatRate = 0;
-
-  final nameController = TextEditingController();
+  final nameController        = TextEditingController();
   final descriptionController = TextEditingController();
+  final basePriceController   = TextEditingController();
 
-  List<CategoryModel> categories = [];
-  CategoryModel? selectedCategory;
+  List<CategoryModel>  categories         = [];
+  CategoryModel?       selectedCategory;
 
-  List<PlatformFile> files = [];
-  String? uploadedImageUrl;
-  bool isUploading = false;
+  List<PlatformFile>   files              = [];
+  String?              uploadedImageUrl;
+  bool                 isUploading        = false;
 
-  // Ingredient bắt buộc chọn 1.
-  // quantity = 1.0 cố định: bán 1 đơn vị sản phẩm thì trừ 1 kg nguyên liệu
   List<IngredientModel> ingredientOptions = [];
-  IngredientModel? selectedIngredient;
+  IngredientModel?      selectedIngredient;
 
-  List<PriceFormItem> prices = [];
+  // Khung giá sỉ
+  List<TierFormItem> tiers = [];
 
-  bool isSaving = false;
-  bool isLoadingData = false;
+  // VAT
+  int selectedVatRate = 0;
+  final List<int> vatRateOptions = [0, 5, 8, 10];
+
+  bool isSaving        = false;
+  bool isLoadingData   = false;
 
   @override
   void onInit() {
     super.onInit();
-    prices.add(PriceFormItem(name: 'Mặc định', isDefault: true));
     _loadInitialData();
   }
 
@@ -63,7 +82,8 @@ class ProductCreateController extends GetxController {
   void onClose() {
     nameController.dispose();
     descriptionController.dispose();
-    for (final p in prices) p.dispose();
+    basePriceController.dispose();
+    for (final t in tiers) t.dispose();
     super.onClose();
   }
 
@@ -82,6 +102,7 @@ class ProductCreateController extends GetxController {
     update();
   }
 
+  // ── Image ────────────────────────────────────────────────────────
   Future<void> pickFiles() async {
     final result = await FilePicker.platform
         .pickFiles(type: FileType.image, allowMultiple: false);
@@ -113,41 +134,37 @@ class ProductCreateController extends GetxController {
     update();
   }
 
-  void addPrice() {
-    prices.add(PriceFormItem());
-    update();
-  }
-
-  void removePrice(int index) {
-    if (prices.length <= 1) {
-      Get.snackbar('Lưu ý', 'Sản phẩm phải có ít nhất 1 mức giá',
-          backgroundColor: Colors.orange, colorText: Colors.white);
-      return;
+  // ── Tiers ────────────────────────────────────────────────────────
+  void addTier() {
+    // Auto-fill minQty = maxQty của khung trước (nếu có)
+    String autoMin = '0';
+    if (tiers.isNotEmpty) {
+      final prevMax = tiers.last.maxQtyController.text.trim();
+      autoMin = prevMax.isNotEmpty ? prevMax : '';
     }
-    final wasDefault = prices[index].isDefault;
-    prices[index].dispose();
-    prices.removeAt(index);
-    if (wasDefault && prices.isNotEmpty) prices[0].isDefault = true;
+    tiers.add(TierFormItem(
+      name: 'Khung \${tiers.length + 1}',
+      minQty: autoMin,
+    ));
     update();
   }
 
-  void setDefaultPrice(int index) {
-    for (int i = 0; i < prices.length; i++) {
-      prices[i].isDefault = (i == index);
-    }
+  void removeTier(int index) {
+    tiers[index].dispose();
+    tiers.removeAt(index);
     update();
   }
 
+  // ── Validate & Save ──────────────────────────────────────────────
   String? _validate() {
     if (nameController.text.trim().isEmpty) return 'Vui lòng nhập tên sản phẩm';
     if (selectedIngredient == null) return 'Vui lòng chọn nguyên liệu';
-    if (prices.isEmpty) return 'Vui lòng thêm ít nhất 1 mức giá';
-    for (int i = 0; i < prices.length; i++) {
-      if (!prices[i].isValid)
-        return 'Mức giá ${i + 1}: vui lòng nhập đầy đủ tên và giá';
+    final bp = double.tryParse(basePriceController.text.trim());
+    if (bp == null || bp < 0) return 'Vui lòng nhập giá gốc hợp lệ';
+    for (int i = 0; i < tiers.length; i++) {
+      if (!tiers[i].isValid)
+        return 'Khung giá ${i + 1}: vui lòng nhập đầy đủ tên và giá';
     }
-    if (!prices.any((p) => p.isDefault))
-      return 'Vui lòng chọn 1 mức giá mặc định';
     return null;
   }
 
@@ -167,51 +184,33 @@ class ProductCreateController extends GetxController {
     isSaving = true;
     update();
 
-    try {
-      final result = await SellerService.createProduct(
-        name: nameController.text.trim(),
-        description: descriptionController.text.trim().isEmpty
-            ? null
-            : descriptionController.text.trim(),
-        unit: 'kg',
-        imageUrl: uploadedImageUrl,
-        categoryId: selectedCategory?.id,
-        categoryName: selectedCategory?.name,
-        prices: prices
-            .map((p) => {
-          'priceName': p.nameController.text.trim(),
-          'price': double.parse(p.priceController.text.trim()),
-          'isDefault': p.isDefault,
-        })
-            .toList(),
-        ingredients: [
-          {'ingredientId': selectedIngredient!.id, 'quantity': 1.0}
-        ],
-        vatRate: selectedVatRate,  // ← THÊM DÒNG NÀY (gửi lên backend)
-      );
+    final result = await SellerService.createProduct(
+      name:         nameController.text.trim(),
+      description:  descriptionController.text.trim().isEmpty
+          ? null
+          : descriptionController.text.trim(),
+      unit:         'kg',
+      imageUrl:     uploadedImageUrl,
+      categoryId:   selectedCategory?.id,
+      categoryName: selectedCategory?.name,   // ← gửi tên để backend dùng
+      basePrice:    double.parse(basePriceController.text.trim()),
+      vatRate:      selectedVatRate,
+      tiers:        List.generate(tiers.length, (i) => tiers[i].toJson(i)),
+      ingredients:  [
+        {'ingredientId': selectedIngredient!.id, 'quantity': 1.0}
+      ],
+    );
 
-      isSaving = false;
-      update();
+    isSaving = false;
+    update();
 
-      if (result.isSuccess) {
-        Get.snackbar('Thành công', 'Đã tạo sản phẩm "${nameController.text}"',
-            backgroundColor: Colors.green, colorText: Colors.white);
-        Get.back(result: true);
-      } else {
-        Get.snackbar('Lỗi', result.message ?? 'Không thể tạo sản phẩm',
-            backgroundColor: Colors.red, colorText: Colors.white);
-      }
-    } catch (e) {
-      isSaving = false;
-      update();
-      Get.snackbar('Lỗi', 'Không thể tạo sản phẩm: $e',
+    if (result.isSuccess) {
+      Get.snackbar('Thành công', 'Đã tạo sản phẩm "${nameController.text}"',
+          backgroundColor: Colors.green, colorText: Colors.white);
+      Get.back(result: true);
+    } else {
+      Get.snackbar('Lỗi', result.message ?? 'Không thể tạo sản phẩm',
           backgroundColor: Colors.red, colorText: Colors.white);
     }
-  }
-
-  IconData getFileIcon(String name) {
-    final ext = name.split('.').last.toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(ext)) return Icons.image;
-    return Icons.insert_drive_file;
   }
 }

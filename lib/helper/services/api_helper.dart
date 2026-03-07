@@ -64,19 +64,25 @@ class SessionStorage {
 
 // ==================== API RESPONSE MODEL ====================
 class ApiResult<T> {
-  final int    code;
-  final T?     data;
+  final int code;
+  final T? data;
   final String message;
-  final bool   isSuccess;
+  int? statusCode; // ← THÊM FIELD NÀY để lưu HTTP status
+  bool isSuccess;  // ← KHÔNG final nữa, để có thể set sau
 
-  ApiResult({required this.code, this.data, required this.message})
-      : isSuccess = code == 900;
+  ApiResult({
+    required this.code,
+    this.data,
+    required this.message,
+    this.statusCode,
+    this.isSuccess = false, // mặc định false, sẽ set sau
+  });
 
   factory ApiResult.fromJson(
       Map<String, dynamic> json, T? Function(dynamic)? fromData) {
     return ApiResult(
-      code:    json['code']    ?? 0,
-      data:    fromData != null ? fromData(json['data']) : null,
+      code: json['code'] ?? 0,
+      data: fromData != null ? fromData(json['data']) : null,
       message: json['message'] ?? '',
     );
   }
@@ -108,22 +114,40 @@ class ApiHelper {
       http.Response res,
       T? Function(dynamic)? fromData,
       ) {
-    final rawBody = utf8.decode(res.bodyBytes, allowMalformed: true); // allow malformed để tránh crash encoding
+    final rawBody = utf8.decode(res.bodyBytes, allowMalformed: true);
 
     try {
       if (rawBody.isEmpty) {
-        return ApiResult.localError('Phản hồi từ server rỗng');
+        return ApiResult.localError('Phản hồi từ server rỗng (status ${res.statusCode})')
+          ..statusCode = res.statusCode;
       }
 
       final json = jsonDecode(rawBody);
 
       if (json is! Map<String, dynamic>) {
-        return ApiResult.localError('Dữ liệu trả về không phải object JSON');
+        return ApiResult.localError('Dữ liệu trả về không phải object JSON (status ${res.statusCode})')
+          ..statusCode = res.statusCode;
       }
 
-      return ApiResult.fromJson(json, fromData);
+      final code = json['code'] as int? ?? (res.statusCode == 200 || res.statusCode == 201 ? 900 : res.statusCode);
+      final message = json['message'] as String? ?? 'Lỗi từ server (status ${res.statusCode})';
+      final data = json['data'];
+
+      final result = ApiResult<T>(
+        code: code,
+        data: fromData != null && data != null ? fromData(data) : null,
+        message: message,
+        statusCode: res.statusCode, // ← LƯU STATUS CODE
+      );
+
+      // Set isSuccess dựa trên status code (đây là cách đúng)
+      result.isSuccess = res.statusCode == 200 || res.statusCode == 201;
+
+      return result;
     } catch (e, stack) {
-      return ApiResult.localError('Lỗi phân tích dữ liệu từ server: $e');
+      print('Parse error: $e\n$stack');
+      return ApiResult.localError('Lỗi phân tích dữ liệu từ server (status ${res.statusCode}): $e')
+        ..statusCode = res.statusCode;
     }
   }
 
@@ -252,6 +276,13 @@ class ApiHelper {
       return ApiResult.localError('Lỗi upload: $e');
     }
   }
+}
+
+bool isDeveloperAccount(String? username) {
+  if (username == null) return false;
+  final lower = username.toLowerCase().trim();
+  return lower.startsWith('developer') &&
+      RegExp(r'developer[1-9]$').hasMatch(lower);
 }
 
 // ==================== ERROR MESSAGE HELPER ====================

@@ -24,13 +24,12 @@ class AppRoutes {
   static const Map<String, String> roleHomeRoutes = {
     AppRole.admin      : '/dashboard',
     AppRole.pos        : '/pos',
-    AppRole.seller     : '/seller/home',      // TODO: tạo SellerHomeScreen
+    AppRole.seller     : '/seller/order',      // TODO: tạo SellerHomeScreen
     AppRole.accountant : '/accountant/home',  // TODO: tạo AccountantHomeScreen
     AppRole.shipper    : '/shipper/home',      // TODO: tạo ShipperHomeScreen
     AppRole.warehouse  : '/warehouse/home',   // TODO: tạo WarehouseHomeScreen
   };
 
-  /// Trả về home route của role, fallback về signIn nếu chưa có trong map
   static String homeForRole(String? role) {
     return roleHomeRoutes[role] ?? signIn;
   }
@@ -105,24 +104,28 @@ class AuthService {
           : null,
     );
 
-    if (result.isSuccess && result.data != null) {
-      final auth = result.data!;
+    if (result.isSuccess) {
+      if (result.data != null) {
+        final auth = result.data!;
 
-      await SessionStorage.saveSession(
-        accessToken: auth.accessToken,
-        role: auth.role,
-        fullName: auth.fullName,
-        isLock: auth.isLock,
-        userId: auth.userId,
-      );
+        await SessionStorage.saveSession(
+          accessToken: auth.accessToken,
+          role: auth.role,
+          fullName: auth.fullName,
+          isLock: auth.isLock,
+          userId: auth.userId,
+        );
 
-      // QUAN TRỌNG: set state TRƯỚC khi navigate
-      // để RoleMiddleware và isAdmin getter có giá trị đúng ngay khi build widget
-      isLoggedIn = true;
-      currentRole = auth.role;
+        // QUAN TRỌNG: set state TRƯỚC khi navigate
+        // để RoleMiddleware và isAdmin getter có giá trị đúng ngay khi build widget
+        isLoggedIn = true;
+        currentRole = auth.role;
 
-      _navigateByRole(auth.role);
-      return null;
+        _navigateByRole(auth.role);
+        return null;
+      } else {
+        getErrorMessage(result.code, result.message);
+      }
     }
 
     return getErrorMessage(result.code, result.message);
@@ -172,6 +175,8 @@ class AuthService {
   // ---- NAVIGATE BY ROLE ----
   static void _navigateByRole(String role) {
     final route = AppRoutes.homeForRole(role);
+
+    print(route);
 
     if (route == AppRoutes.signIn) {
       // Role chưa có trong map → chưa triển khai

@@ -3,6 +3,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:original_taste/helper/services/seller_services.dart';
+import 'package:original_taste/helper/theme/app_theme.dart';
 import 'package:original_taste/helper/utils/mixins/ui_mixins.dart';
 import 'package:original_taste/helper/utils/my_shadow.dart';
 import 'package:original_taste/helper/widgets/my_card.dart';
@@ -37,22 +38,27 @@ class _ProductListScreenState extends State<ProductListScreen> with UIMixin {
       builder: (controller) {
         return Layout(
           screenName: 'QUẢN LÝ SẢN PHẨM',
-          child: Padding(
-            padding: MySpacing.all(20),
-            child: MyCard(
-              shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
-              borderRadiusAll: 12,
-              paddingAll: 0,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(),
-                  const Divider(height: 0),
-                  Expanded(
-                    child: _buildBody(),
+          child: MyCard(
+            shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
+            borderRadiusAll: 12,
+            paddingAll: 0,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final availableH = constraints.maxHeight.isFinite
+                    ? constraints.maxHeight
+                    : MediaQuery.of(context).size.height - 120;
+                return SizedBox(
+                  height: availableH,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const Divider(height: 0),
+                      Expanded(child: _buildBody()),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
           ),
         );
@@ -161,123 +167,148 @@ class _ProductListScreenState extends State<ProductListScreen> with UIMixin {
   }
 
   Widget _buildTable() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Chỉ scroll dọc, bỏ scroll ngang
-        Expanded(
-          child: SingleChildScrollView(
-            controller: controller.scrollController,
-            scrollDirection: Axis.vertical,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: 1200, // Tăng maxWidth lên
-                  minWidth: MediaQuery.of(context).size.width - 80,
-                ),
-                child: DataTable(
-                  headingRowColor: WidgetStatePropertyAll(
-                      contentTheme.secondary.withAlpha(5)),
-                  dataRowMaxHeight: 80,
-                  columnSpacing: 24,
-                  showBottomBorder: true,
-                  columns: [
-                    DataColumn(
-                        label: MyText.labelLarge('Sản phẩm', fontWeight: 700)),
-                    DataColumn(
-                        label: MyText.labelLarge('Giá', fontWeight: 700)),
-                    DataColumn(
-                        label: MyText.labelLarge('Thao tác', fontWeight: 700)),
-                  ],
-                  rows: List.generate(controller.products.length, (index) {
-                    final p = controller.products[index];
-                    return DataRow(cells: [
-                      // Cột 1: Tên + ảnh
-                      DataCell(
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildProductImage(p),
-                            MySpacing.width(12),
-                            Expanded(
-                              child: Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tableWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.of(context).size.width;
+        return SingleChildScrollView(
+          controller: controller.scrollController,
+          child: SizedBox(
+            width: tableWidth,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: tableWidth,
+                  child: DataTable(
+                    headingRowColor: WidgetStatePropertyAll(
+                        contentTheme.secondary.withAlpha(5)),
+                    dataRowMaxHeight: 80,
+                    columnSpacing: 24,
+                    horizontalMargin: 16,
+                    showBottomBorder: true,
+                    columns: [
+                      DataColumn(
+                          label: MyText.labelLarge('Sản phẩm', fontWeight: 700)),
+                      DataColumn(
+                          label: MyText.labelLarge('Giá gốc',
+                              fontWeight: 700)),
+                      // DataColumn(
+                      //     label: MyText.labelLarge('Nguyên liệu',
+                      //         fontWeight: 700)),
+                      DataColumn(
+                          label: MyText.labelLarge('Danh mục', fontWeight: 700)),
+                      DataColumn(
+                          label: MyText.labelLarge('Thao tác', fontWeight: 700)),
+                    ],
+                    rows: List.generate(controller.products.length, (index) {
+                      final p = controller.products[index];
+                      return DataRow(cells: [
+                        // Tên + ảnh
+                        DataCell(
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildProductImage(p),
+                              MySpacing.width(12),
+                              Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text(
-                                    p.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
+                                  SizedBox(
+                                    width: 180,
+                                    child: MyText.bodyMedium(p.name,
+                                        fontWeight: 600,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Cột 2: Giá (đã giảm width)
-                      DataCell(
-                        p.defaultPrice != null
-                            ? SizedBox(
-                          width: 100, // Giảm width cột giá
-                          child: Text(
-                            _formatCurrency(p.defaultPrice!),
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: contentTheme.primary,
-                              fontSize: 14,
-                            ),
+                            ],
                           ),
-                        )
-                            : const Text('--'),
-                      ),
-                      // Cột 3: Thao tác
-                      DataCell(
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            MyContainer(
-                              onTap: () => _goToEdit(p),
-                              color: contentTheme.primary.withValues(alpha: 0.1),
-                              padding: MySpacing.xy(8, 6),
-                              borderRadiusAll: 6,
-                              child: SvgPicture.asset(
-                                'assets/svg/pen_2.svg',
-                                height: 14,
-                                width: 14,
-                              ),
-                            ),
-                          ],
                         ),
-                      ),
-                    ]);
-                  }),
+                        // Giá gốc
+                        DataCell(
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              MyText.bodyMedium(
+                                _formatCurrency(p.basePrice),
+                                fontWeight: 700,
+                                color: contentTheme.primary,
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Nguyên liệu
+                        // DataCell(_buildIngredientCell(p)),
+                        // Danh mục — dùng categoryName (không có .category trên ProductModel)
+                        DataCell(
+                          MyText.bodyMedium(
+                            p.categoryName ?? '--',
+                            fontWeight: 500,
+                          ),
+                        ),
+                        // Thao tác: Edit + Delete
+                        DataCell(
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              MyContainer(
+                                onTap: () => _goToEdit(p),
+                                color: contentTheme.primary
+                                    .withValues(alpha: 0.1),
+                                padding: MySpacing.xy(12, 8),
+                                borderRadiusAll: 8,
+                                child: SvgPicture.asset('assets/svg/pen_2.svg',
+                                    height: 16, width: 16),
+                              ),
+                              MySpacing.width(8),
+                              // MyContainer(
+                              //   onTap: () =>
+                              //       controller.deleteProduct(p.id, p.name),
+                              //   color: contentTheme.danger
+                              //       .withValues(alpha: 0.1),
+                              //   padding: MySpacing.xy(12, 8),
+                              //   borderRadiusAll: 8,
+                              //   child: SvgPicture.asset(
+                              //     'assets/svg/trash_bin_2.svg',
+                              //     height: 16,
+                              //     width: 16,
+                              //     colorFilter: ColorFilter.mode(
+                              //         contentTheme.danger, BlendMode.srcIn),
+                              //   ),
+                              // ),
+                            ],
+                          ),
+                        ),
+                      ]);
+                    }),
+                  ),
                 ),
-              ),
+                // Load more / end indicator
+                if (controller.isLoadingMore)
+                  Padding(
+                    padding: MySpacing.xy(0, 16),
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                if (!controller.hasMore && controller.products.isNotEmpty)
+                  Padding(
+                    padding: MySpacing.xy(0, 16),
+                    child: Center(
+                      child: MyText.bodySmall(
+                        'Đã hiển thị tất cả ${controller.products.length} sản phẩm',
+                        muted: true,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
-        ),
-        // Load more / end indicator
-        if (controller.isLoadingMore)
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-        if (!controller.hasMore && controller.products.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Center(
-              child: MyText.bodySmall(
-                'Đã hiển thị tất cả ${controller.products.length} sản phẩm',
-                muted: true,
-              ),
-            ),
-          ),
-      ],
+        );
+      },
     );
   }
 
@@ -287,14 +318,14 @@ class _ProductListScreenState extends State<ProductListScreen> with UIMixin {
         ? SellerService.buildImageUrl(p.imageUrl!)
         : null;
     return MyContainer(
-      height: 48,
-      width: 48,
+      height: 56,
+      width: 56,
       paddingAll: 0,
-      borderRadiusAll: 8,
+      borderRadiusAll: 10,
       color: contentTheme.light,
       child: url != null && url.isNotEmpty
           ? ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         child: Image.network(
           url,
           fit: BoxFit.cover,
@@ -306,25 +337,49 @@ class _ProductListScreenState extends State<ProductListScreen> with UIMixin {
   }
 
   Widget _imgPlaceholder() => Center(
-    child: Icon(
-      Icons.fastfood_outlined,
-      size: 20,
-      color: contentTheme.secondary.withValues(alpha: 0.4),
-    ),
+    child: Icon(Icons.fastfood_outlined,
+        size: 24,
+        color: contentTheme.secondary.withValues(alpha: 0.4)),
   );
+
+  // ── Ingredient cell ───────────────────────────────────────────────
+  Widget _buildIngredientCell(ProductModel p) {
+    if (p.variants.isNotEmpty && p.variants.first.ingredients.isNotEmpty) {
+      final ing = p.variants.first.ingredients.first;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 150,
+            child: MyText.bodySmall(ing.ingredientName,
+                fontWeight: 600,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+          ),
+        ],
+      );
+    }
+    return MyText.bodySmall('--', muted: true);
+  }
 
   // ── Helpers ───────────────────────────────────────────────────────
   String _formatCurrency(double value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M đ';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(0)}K đ';
+    }
     return '${value.toStringAsFixed(0)} đ';
   }
 
   Future<void> _goToCreate() async {
-    final result = await Get.to(() => const ProductCreateScreen());
-    if (result == true) controller.fetchProducts(refresh: true);
+    await Get.to(() => const ProductCreateScreen());
+    controller.fetchProducts(refresh: true); // luôn refresh khi quay về
   }
 
   Future<void> _goToEdit(ProductModel p) async {
-    final result = await Get.to(() => const ProductEditScreen(), arguments: p);
-    if (result == true) controller.fetchProducts(refresh: true);
+    await Get.to(() => const ProductEditScreen(), arguments: p);
+    controller.fetchProducts(refresh: true); // luôn refresh khi quay về
   }
 }

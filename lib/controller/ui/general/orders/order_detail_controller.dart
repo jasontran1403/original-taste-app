@@ -7,34 +7,26 @@ class OrderDetailController extends MyController {
   OrderModel? order;
   bool isLoading = false;
   String? errorMessage;
+  bool isDownloading = false; // ← Thêm biến này
+
+  OrderDetailController({this.order});
 
   @override
   void onInit() {
     super.onInit();
-    final args = Get.arguments;
-    if (args is OrderModel) {
-      order = args;
+    if (order == null) {
+      errorMessage = 'Không tìm thấy thông tin đơn hàng';
       update();
-    } else if (args is int) {
-      _loadOrder(args);
-    }
-  }
-
-  Future<void> _loadOrder(int orderId) async {
-    isLoading = true;
-    errorMessage = null;
-    update();
-
-    final result = await SellerService.getOrderById(orderId);
-
-    isLoading = false;
-    if (result.isSuccess && result.data != null) {
-      order = result.data!;
     } else {
-      errorMessage = result.message ?? 'Không thể tải đơn hàng';
+      isLoading = false;
+      update();
     }
-    update();
   }
+
+  Future<void> downloadInvoice(OrderModel o) async {
+
+  }
+
 
   // ── Progress steps dựa trên status thực ────────────────────────
   List<ProgressStep> get steps {

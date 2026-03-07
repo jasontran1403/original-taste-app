@@ -1,3 +1,4 @@
+// controller/seller/category_edit_controller.dart
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -8,13 +9,12 @@ class CategoryEditController extends GetxController {
   final formKey = GlobalKey<FormState>();
   final nameController = TextEditingController();
 
-  // Nhận từ arguments khi navigate
   late int categoryId;
   CategoryModel? category;
 
   List<PlatformFile> files = [];
-  String? currentImageUrl;   // ảnh hiện tại (từ server)
-  String? uploadedImageUrl;  // ảnh mới upload
+  String? currentImageUrl;
+  String? uploadedImageUrl;
   bool isUploading = false;
   bool isSaving = false;
   bool isLoading = false;
@@ -75,22 +75,28 @@ class CategoryEditController extends GetxController {
       uploadedImageUrl = result.data;
     } else {
       Get.snackbar('Lỗi upload', result.message,
-          backgroundColor: Colors.red, colorText: Colors.white);
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+          forwardAnimationCurve: Curves.easeOutBack);
     }
     isUploading = false;
     update();
   }
 
-  // Ảnh hiện dùng (mới upload ưu tiên, fallback về ảnh cũ)
   String? get activeImageUrl => uploadedImageUrl ?? currentImageUrl;
 
   Future<bool> save() async {
     if (!formKey.currentState!.validate()) return false;
     if (isUploading) {
       Get.snackbar('Chờ', 'Đang upload ảnh...',
-          backgroundColor: Colors.orange, colorText: Colors.white);
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+          forwardAnimationCurve: Curves.easeOutBack);
       return false;
     }
+
     isSaving = true;
     update();
 
@@ -104,12 +110,32 @@ class CategoryEditController extends GetxController {
     update();
 
     if (result.isSuccess) {
-      Get.snackbar('Thành công', 'Đã cập nhật danh mục',
-          backgroundColor: Colors.green, colorText: Colors.white);
+      Get.snackbar(
+        'Thành công',
+        'Đã cập nhật danh mục',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 2),
+        margin: const EdgeInsets.all(16),
+        borderRadius: 8,
+        forwardAnimationCurve: Curves.easeOutBack,
+        reverseAnimationCurve: Curves.easeIn,
+      );
       return true;
     } else {
-      Get.snackbar('Lỗi', result.message,
-          backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar(
+        'Lỗi',
+        result.message ?? 'Không thể cập nhật danh mục',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 3),
+        margin: const EdgeInsets.all(16),
+        borderRadius: 8,
+        forwardAnimationCurve: Curves.easeOutBack,
+        reverseAnimationCurve: Curves.easeIn,
+      );
       return false;
     }
   }

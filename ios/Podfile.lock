@@ -53,6 +53,9 @@ PODS:
     - GoogleMaps/Base
   - image_picker_ios (0.0.1):
     - Flutter
+  - mobile_scanner (7.0.0):
+    - Flutter
+    - FlutterMacOS
   - open_file_ios (1.0.3):
     - Flutter
   - quill_native_bridge_ios (0.0.1):
@@ -81,6 +84,7 @@ DEPENDENCIES:
   - fluttertoast (from `.symlinks/plugins/fluttertoast/ios`)
   - google_maps_flutter_ios (from `.symlinks/plugins/google_maps_flutter_ios/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
+  - mobile_scanner (from `.symlinks/plugins/mobile_scanner/darwin`)
   - open_file_ios (from `.symlinks/plugins/open_file_ios/ios`)
   - quill_native_bridge_ios (from `.symlinks/plugins/quill_native_bridge_ios/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
@@ -112,6 +116,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/google_maps_flutter_ios/ios"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
+  mobile_scanner:
+    :path: ".symlinks/plugins/mobile_scanner/darwin"
   open_file_ios:
     :path: ".symlinks/plugins/open_file_ios/ios"
   quill_native_bridge_ios:
@@ -137,6 +143,7 @@ SPEC CHECKSUMS:
   google_maps_flutter_ios: 0cf046caf50b00d95071f79e8031fcd5ef902beb
   GoogleMaps: 8939898920281c649150e0af74aa291c60f2e77d
   image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
+  mobile_scanner: 9157936403f5a0644ca3779a38ff8404c5434a93
   open_file_ios: 46184d802ee7959203f6392abcfa0dd49fdb5be0
   quill_native_bridge_ios: f47af4b14e7757968486641656c5d23250cee521
   SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf

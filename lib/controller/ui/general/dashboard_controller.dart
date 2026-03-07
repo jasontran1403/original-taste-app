@@ -1,107 +1,176 @@
+// lib/controller/ui/general/dashboard_controller.dart
+import 'package:get/get.dart';
 import 'package:original_taste/controller/my_controller.dart';
-import 'package:original_taste/models/chart_model.dart';
-import 'package:original_taste/models/recent_order_model.dart';
-import 'package:syncfusion_flutter_charts/charts.dart';
-import 'package:syncfusion_flutter_maps/maps.dart';
+import 'package:original_taste/helper/services/api_helper.dart';
+import 'package:original_taste/helper/services/dashboard_services.dart';
 
-enum DurationFilter { all, oneMonth, sixMonths, oneYear }
+// ══════════════════════════════════════════════════════════════════
+// ENUMS
+// ══════════════════════════════════════════════════════════════════
 
-extension DurationFilterExtension on DurationFilter {
-  String get label {
-    switch (this) {
-      case DurationFilter.all:
-        return "All";
-      case DurationFilter.oneMonth:
-        return "1M";
-      case DurationFilter.sixMonths:
-        return "6M";
-      case DurationFilter.oneYear:
-        return "1Y";
-    }
-  }
+enum DashboardMode { pos, wholesale, retail }
+
+enum DashboardPeriod {
+  today('TODAY',   'Hôm nay'),
+  days7('7DAYS',   '7 ngày'),
+  days30('30DAYS', '30 ngày'),
+  year('YEAR',     '1 năm'),
+  custom('CUSTOM', 'Tuỳ chọn');
+
+  final String apiValue;
+  final String label;
+  const DashboardPeriod(this.apiValue, this.label);
 }
 
+// ══════════════════════════════════════════════════════════════════
+// CONTROLLER
+// ══════════════════════════════════════════════════════════════════
+
 class DashboardController extends MyController {
-  DurationFilter selectedFilter = DurationFilter.all;
-  late List<ChartSampleData> conversionsData;
-  late List<TimeDetails> worldClockData;
-  List<RecentOrderModel > recentOrder = [];
+  // ── UI State ───────────────────────────────────────────────────
+  DashboardMode   mode   = DashboardMode.pos;
+  DashboardPeriod period = DashboardPeriod.days30;
+  DateTime?       customFrom;
+  DateTime?       customTo;
 
-  late MapShapeSource mapSource2;
+  final RxDouble ramUsagePercent = 0.0.obs;
+  final RxInt lastQueryDurationMs = 0.obs;
 
-  void updateFilter(DurationFilter newFilter) {
-    selectedFilter = newFilter;
-    update();
-  }
+  // ── Reload key ─────────────────────────────────────────────────
+  int reloadKey = 0;
 
-  final List<ChartSampleData> chartData = [
-    ChartSampleData(x: 'Jan', y: 10, yValue: 1000),
-    ChartSampleData(x: 'Fab', y: 20, yValue: 2000),
-    ChartSampleData(x: 'Mar', y: 15, yValue: 1500),
-    ChartSampleData(x: 'Jun', y: 5, yValue: 500),
-    ChartSampleData(x: 'Jul', y: 30, yValue: 3000),
-    ChartSampleData(x: 'Aug', y: 20, yValue: 2000),
-    ChartSampleData(x: 'Sep', y: 40, yValue: 4000),
-    ChartSampleData(x: 'Oct', y: 60, yValue: 6000),
-    ChartSampleData(x: 'Nov', y: 55, yValue: 5500),
-    ChartSampleData(x: 'Dec', y: 38, yValue: 3000),
-  ];
-  final TooltipBehavior chart = TooltipBehavior(enable: true, format: 'point.x : point.yValue1 : point.yValue2');
+  // ── Restaurant data (wholesale / retail) ───────────────────────
+  bool                      isLoading = false;
+  String                    errorMsg  = '';
+  RestaurantDashboardModel? data;
 
-  List<PageData> pageDataList = [
-    PageData(path: 'larkon/ecommerce.html', views: 465, exitRate: 4.4),
-    PageData(path: 'larkon/dashboard.html', views: 426, exitRate: 20.4),
-    PageData(path: 'larkon/chat.html', views: 254, exitRate: 12.25),
-    PageData(path: 'larkon/auth-login.html', views: 3369, exitRate: 5.2),
-    PageData(path: 'larkon/email.html', views: 985, exitRate: 64.2),
-    PageData(path: 'larkon/social.html', views: 653, exitRate: 2.4),
-  ];
+  // ── POS data ───────────────────────────────────────────────────
+  bool               posIsLoading    = false;
+  String             posErrorMsg     = '';
+  PosDashboardModel? posData;
+  int                posAnimationKey = 0;
+
+  // Cache để phát hiện thay đổi cho POS
+  DashboardPeriod _posLastPeriod     = DashboardPeriod.days30;
+  DateTime?       _posLastCustomFrom;
+  DateTime?       _posLastCustomTo;
+  int             _posLastReloadKey  = -1;
 
   @override
   void onInit() {
-    conversionsData = <ChartSampleData>[
-      ChartSampleData(x: 'David', y: 45, text: 'David 45%'),
-      ChartSampleData(x: 'Steve', y: 15, text: 'Steve 15%'),
-      ChartSampleData(x: 'Jack', y: 21, text: 'Jack 21%'),
-      ChartSampleData(x: 'Others', y: 19, text: 'Others 19%'),
-    ];
-
-    final DateTime currentTime = DateTime.now().toUtc();
-
-    worldClockData = <TimeDetails>[
-      TimeDetails('Seattle', 47.60621, -122.332071, currentTime.subtract(const Duration(hours: 7))),
-      TimeDetails('Belem', -1.455833, -48.503887, currentTime.subtract(const Duration(hours: 3))),
-      TimeDetails('Greenland', 71.706936, -42.604303, currentTime.subtract(const Duration(hours: 2))),
-      TimeDetails('Yakutsk', 62.035452, 129.675475, currentTime.add(const Duration(hours: 9))),
-      TimeDetails('Delhi', 28.704059, 77.10249, currentTime.add(const Duration(hours: 5, minutes: 30))),
-      TimeDetails('Brisbane', -27.469771, 153.025124, currentTime.add(const Duration(hours: 10))),
-      TimeDetails('Harare', -17.825166, 31.03351, currentTime.add(const Duration(hours: 2))),
-    ];
-
-    mapSource2 = const MapShapeSource.asset('assets/data/world_map.json', shapeDataField: 'name');
-
-    RecentOrderModel.dummyList.then((value) {
-      recentOrder = value;
-      update();
-    });
     super.onInit();
+    load();
   }
-}
 
-class TimeDetails {
-  TimeDetails(this.countryName, this.latitude, this.longitude, this.date);
+  // ══════════════════════════════════════════════════════════════
+  // PUBLIC ACTIONS
+  // ══════════════════════════════════════════════════════════════
 
-  final String countryName;
-  final double latitude;
-  final double longitude;
-  final DateTime date;
-}
+  Future<void> reload() => load();
 
+  void pullRefresh() {
+    reloadKey++;
+    load();
+  }
 
-class PageData {
-  final String path;
-  final int views;
-  final double exitRate;
+  void setMode(DashboardMode m) {
+    if (mode == m) return;
+    mode = m;
+    load();
+  }
 
-  PageData({required this.path, required this.views, required this.exitRate});
+  void setPeriod(DashboardPeriod p, {DateTime? from, DateTime? to}) {
+    period     = p;
+    customFrom = from;
+    customTo   = to;
+    reloadKey++;
+    load();
+  }
+
+  /// Gọi từ PosDashboardScreen — chỉ re-fetch khi thực sự có thay đổi
+  Future<void> syncPosIfNeeded() async {
+    final changed = reloadKey  != _posLastReloadKey  ||
+        period     != _posLastPeriod     ||
+        customFrom != _posLastCustomFrom ||
+        customTo   != _posLastCustomTo;
+    if (changed) await _loadPos();
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // LOAD — điều phối theo mode
+  // ══════════════════════════════════════════════════════════════
+
+  Future<void> load() async {
+    if (mode == DashboardMode.pos) {
+      await _loadPos();
+    } else {
+      await _loadRestaurant();
+    }
+  }
+
+  // ── POS fetch ─────────────────────────────────────────────────
+
+  Future<void> _loadPos() async {
+    _posLastReloadKey  = reloadKey;
+    _posLastPeriod     = period;
+    _posLastCustomFrom = customFrom;
+    _posLastCustomTo   = customTo;
+
+    posIsLoading = true;
+    posErrorMsg  = '';
+    update();
+
+    try {
+      final result = await PosDashboardService.getPosDashboard(
+        period:   period,
+        fromDate: customFrom,
+        toDate:   customTo,
+      );
+      if (result.isSuccess && result.data != null) {
+        posData         = result.data;
+        posAnimationKey++;
+      } else {
+        posErrorMsg = getErrorMessage(result.code, result.message);
+      }
+    } catch (e) {
+      posErrorMsg = e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      posIsLoading = false;
+      update();
+    }
+  }
+
+  // ── Restaurant fetch (wholesale / retail) ─────────────────────
+
+  Future<void> _loadRestaurant() async {
+    isLoading = true;
+    errorMsg  = '';
+    update();
+
+    try {
+      final result = await DashboardService.getRestaurantDashboard(
+        period:   period,
+        fromDate: customFrom,
+        toDate:   customTo,
+        mode:     mode.name,  // "wholesale" hoặc "retail"
+      );
+      if (result.isSuccess && result.data != null) {
+        data = result.data;
+      } else {
+        errorMsg = getErrorMessage(result.code, result.message);
+      }
+    } catch (e) {
+      errorMsg = e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      isLoading = false;
+      update();
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // CONVENIENT GETTERS
+  // ══════════════════════════════════════════════════════════════
+
+  bool get hasData    => data    != null && !isLoading    && errorMsg.isEmpty;
+  bool get hasPosData => posData != null && !posIsLoading && posErrorMsg.isEmpty;
 }

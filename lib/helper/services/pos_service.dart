@@ -3,7 +3,7 @@
 import 'package:original_taste/helper/services/api_helper.dart';
 
 // ════════════════════════════════════════
-// MODELS
+// MODELS — CATEGORY / PRODUCT / VARIANT
 // ════════════════════════════════════════
 
 class PosCategoryModel {
@@ -27,12 +27,12 @@ class PosCategoryModel {
 
   factory PosCategoryModel.fromJson(Map<String, dynamic> json) =>
       PosCategoryModel(
-        id: json['id'],
-        name: json['name'],
-        imageUrl: json['imageUrl'],
+        id:           json['id'],
+        name:         json['name'],
+        imageUrl:     json['imageUrl'],
         displayOrder: json['displayOrder'] ?? 0,
-        isActive: json['isActive'] ?? true,
-        singlePrice: json['singlePrice'] ?? false,
+        isActive:     json['isActive'] ?? true,
+        singlePrice:  json['singlePrice'] ?? false,
         productCount: json['productCount'] ?? 0,
       );
 }
@@ -50,8 +50,8 @@ class PriceOption {
 
   factory PriceOption.fromJson(Map<String, dynamic> json) => PriceOption(
     discountPercent: json['discountPercent'],
-    price: (json['price'] as num).toDouble(),
-    label: json['label'],
+    price:           (json['price'] as num).toDouble(),
+    label:           json['label'],
   );
 }
 
@@ -138,7 +138,7 @@ class PosVariantModel {
 
 class PosAppMenuModel {
   final int id;
-  final String platform; // SHOPEE_FOOD | GRAB_FOOD
+  final String platform;
   final double price;
   final bool isActive;
 
@@ -149,13 +149,12 @@ class PosAppMenuModel {
     required this.isActive,
   });
 
-  factory PosAppMenuModel.fromJson(Map<String, dynamic> json) =>
-      PosAppMenuModel(
-        id:       json['id'],
-        platform: json['platform'],
-        price:    (json['price'] as num).toDouble(),
-        isActive: json['isActive'] ?? true,
-      );
+  factory PosAppMenuModel.fromJson(Map<String, dynamic> json) => PosAppMenuModel(
+    id:       json['id'],
+    platform: json['platform'],
+    price:    (json['price'] as num).toDouble(),
+    isActive: json['isActive'] ?? true,
+  );
 }
 
 class PosProductModel {
@@ -197,32 +196,31 @@ class PosProductModel {
     this.isGrabFood = false,
   });
 
-  factory PosProductModel.fromJson(Map<String, dynamic> json) =>
-      PosProductModel(
-        id:           json['id'],
-        name:         json['name'],
-        description:  json['description'],
-        imageUrl:     json['imageUrl'],
-        isActive:     json['isActive'] ?? true,
-        categoryId:   json['categoryId'],
-        categoryName: json['categoryName'],
-        singlePrice:  json['singlePrice'] ?? false,
-        basePrice:    (json['basePrice'] as num).toDouble(),
-        displayOrder: json['displayOrder'] ?? 0,
-        priceOptions: (json['priceOptions'] as List<dynamic>? ?? [])
-            .map((e) => PriceOption.fromJson(e))
-            .toList(),
-        variants: (json['variants'] as List<dynamic>? ?? [])
-            .map((e) => PosVariantModel.fromJson(e))
-            .toList(),
-        hasVariants:  json['hasVariants'] ?? false,
-        appMenus: (json['appMenus'] as List<dynamic>? ?? [])
-            .map((e) => PosAppMenuModel.fromJson(e))
-            .toList(),
-        vatPercent:   json['vatPercent'] as int? ?? 0,
-        isShopeeFood: json['isShopeeFood'] as bool? ?? false,
-        isGrabFood:   json['isGrabFood'] as bool? ?? false,
-      );
+  factory PosProductModel.fromJson(Map<String, dynamic> json) => PosProductModel(
+    id:           json['id'],
+    name:         json['name'],
+    description:  json['description'],
+    imageUrl:     json['imageUrl'],
+    isActive:     json['isActive'] ?? true,
+    categoryId:   json['categoryId'],
+    categoryName: json['categoryName'],
+    singlePrice:  json['singlePrice'] ?? false,
+    basePrice:    (json['basePrice'] as num).toDouble(),
+    displayOrder: json['displayOrder'] ?? 0,
+    priceOptions: (json['priceOptions'] as List<dynamic>? ?? [])
+        .map((e) => PriceOption.fromJson(e))
+        .toList(),
+    variants: (json['variants'] as List<dynamic>? ?? [])
+        .map((e) => PosVariantModel.fromJson(e))
+        .toList(),
+    hasVariants:  json['hasVariants'] ?? false,
+    appMenus: (json['appMenus'] as List<dynamic>? ?? [])
+        .map((e) => PosAppMenuModel.fromJson(e))
+        .toList(),
+    vatPercent:   json['vatPercent'] as int? ?? 0,
+    isShopeeFood: json['isShopeeFood'] as bool? ?? false,
+    isGrabFood:   json['isGrabFood'] as bool? ?? false,
+  );
 
   PosProductModel copyWithOrder(int order) => PosProductModel(
     id: id, name: name, description: description, imageUrl: imageUrl,
@@ -235,16 +233,14 @@ class PosProductModel {
 }
 
 // ════════════════════════════════════════
-// ADDON ITEM — snapshot giá khi đặt hàng
+// MODELS — ADDON / CART
 // ════════════════════════════════════════
 
-/// Lưu thông tin addon tại thời điểm đặt hàng (snapshot).
-/// discountedAddonPrice = baseAddonPrice × (1 - discountPercent/100)
 class AddonItem {
   final int ingredientId;
   final String ingredientName;
-  final double baseAddonPrice;        // giá gốc trước discount
-  final double discountedAddonPrice;  // giá sau áp discount của priceOption
+  final double baseAddonPrice;
+  final double discountedAddonPrice;
   final int quantity;
 
   const AddonItem({
@@ -255,20 +251,15 @@ class AddonItem {
     required this.quantity,
   });
 
-  /// Tổng tiền addon item này (đã discount × số lượng)
   double get subtotal => discountedAddonPrice * quantity;
 }
-
-// ════════════════════════════════════════
-// CART MODELS
-// ════════════════════════════════════════
 
 class VariantGroupSelection {
   final int variantId;
   final String groupName;
-  final bool isAddonGroup;               // true = addon group, false = regular variant
-  final Map<int, int> selectedIngredients; // ingredientId → count
-  final List<AddonItem>? addonItems;     // populated khi isAddonGroup=true, chứa snapshot giá
+  final bool isAddonGroup;
+  final Map<int, int> selectedIngredients;
+  final List<AddonItem>? addonItems;
 
   const VariantGroupSelection({
     required this.variantId,
@@ -294,23 +285,19 @@ class CartItem {
     this.note,
   });
 
-  /// Tổng addon cho 1 đơn vị sản phẩm (đã áp discount, dùng AddonItem.subtotal)
   double get addonPerUnit {
     double total = 0;
     for (final sel in variantSelections) {
       if (!sel.isAddonGroup || sel.addonItems == null) continue;
       for (final item in sel.addonItems!) {
-        total += item.subtotal; // discountedAddonPrice × item.quantity
+        total += item.subtotal;
       }
     }
     return total;
   }
 
-  /// Tổng addon toàn bộ CartItem (addonPerUnit × CartItem.quantity)
   double get addonTotal => addonPerUnit * quantity;
-
-  /// Subtotal = (giá sản phẩm + addon/unit) × quantity
-  double get subtotal => (selectedPrice.price + addonPerUnit) * quantity;
+  double get subtotal   => (selectedPrice.price + addonPerUnit) * quantity;
 
   CartItem copyWith({int? quantity, String? note}) => CartItem(
     product:           product,
@@ -322,7 +309,7 @@ class CartItem {
 }
 
 // ════════════════════════════════════════
-// SHIFT MODELS
+// MODELS — SHIFT
 // ════════════════════════════════════════
 
 class PosShiftDenominationModel {
@@ -381,7 +368,7 @@ class PosShiftInventoryModel {
 class PosShiftModel {
   final int id;
   final String staffName;
-  final String status; // OPEN | CLOSED
+  final String status;
   final String shiftDate;
   final bool isFirstShiftOfDay;
   final int openTime;
@@ -449,7 +436,7 @@ class PosShiftModel {
 }
 
 // ════════════════════════════════════════
-// ORDER MODELS
+// MODELS — ORDER
 // ════════════════════════════════════════
 
 class PosOrderItemIngredientModel {
@@ -585,15 +572,17 @@ class PosOrderModel {
 }
 
 // ════════════════════════════════════════
-// STOCK IMPORT MODELS
+// MODELS — STOCK IMPORT
 // ════════════════════════════════════════
 
+/// Request item khi gọi importStock
 class StockImportItem {
   final int ingredientId;
   final int packQty;
   const StockImportItem({required this.ingredientId, required this.packQty});
 }
 
+/// Response đơn giản từ importStock
 class StockImportModel {
   final int id;
   final int ingredientId;
@@ -609,13 +598,81 @@ class StockImportModel {
     required this.importedAt,
   });
 
-  factory StockImportModel.fromJson(Map<String, dynamic> json) => StockImportModel(
-    id:             json['id'] as int,
-    ingredientId:   json['ingredientId'] as int,
-    ingredientName: json['ingredientName'] as String,
-    packQty:        json['packQty'] as int,
-    importedAt:     json['importedAt'] as int,
-  );
+  factory StockImportModel.fromJson(Map<String, dynamic> json) =>
+      StockImportModel(
+        id:             json['id'] as int,
+        ingredientId:   json['ingredientId'] as int,
+        ingredientName: json['ingredientName'] as String,
+        packQty:        json['packQty'] as int,
+        importedAt:     json['importedAt'] as int,
+      );
+}
+
+/// Chi tiết 1 item trong lịch sử nhập kho
+class StockImportItemDetail {
+  final int id;
+  final int ingredientId;
+  final String ingredientName;
+  final String? ingredientImageUrl;
+  final String ingredientType; // "MAIN" | "SUB"
+  final int packQty;
+  final int unitPerPack;
+  final int importedAt;
+
+  const StockImportItemDetail({
+    required this.id,
+    required this.ingredientId,
+    required this.ingredientName,
+    this.ingredientImageUrl,
+    required this.ingredientType,
+    required this.packQty,
+    required this.unitPerPack,
+    required this.importedAt,
+  });
+
+  factory StockImportItemDetail.fromJson(Map<String, dynamic> j) =>
+      StockImportItemDetail(
+        id:                  j['id'] ?? 0,
+        ingredientId:        j['ingredientId'] ?? 0,
+        ingredientName:      j['ingredientName'] ?? '',
+        ingredientImageUrl:  j['ingredientImageUrl'],
+        ingredientType:      j['ingredientType'] ?? 'MAIN',
+        packQty:             j['packQty'] ?? 0,
+        unitPerPack:         j['unitPerPack'] ?? 1,
+        importedAt:          j['importedAt'] ?? 0,
+      );
+
+  bool get isMain => ingredientType == 'MAIN';
+}
+
+/// Một lần nhập kho (batch)
+class StockImportBatch {
+  final int importedAt;
+  final int batchIndex;
+  final int totalItems;
+  final List<StockImportItemDetail> items;
+
+  const StockImportBatch({
+    required this.importedAt,
+    required this.batchIndex,
+    required this.totalItems,
+    required this.items,
+  });
+
+  factory StockImportBatch.fromJson(Map<String, dynamic> j) =>
+      StockImportBatch(
+        importedAt: j['importedAt'] ?? 0,
+        batchIndex: j['batchIndex'] ?? 1,
+        totalItems: j['totalItems'] ?? 0,
+        items: (j['items'] as List<dynamic>? ?? [])
+            .map((e) => StockImportItemDetail.fromJson(e))
+            .toList(),
+      );
+
+  List<StockImportItemDetail> get mainItems =>
+      items.where((e) => e.isMain).toList();
+  List<StockImportItemDetail> get subItems =>
+      items.where((e) => !e.isMain).toList();
 }
 
 // ════════════════════════════════════════
@@ -625,9 +682,7 @@ class StockImportModel {
 class PosService {
   static const String _baseUrl = '/api/pos';
 
-  // ════════════════════════════════════════
-  // IMAGE HELPERS
-  // ════════════════════════════════════════
+  // ── Image helpers ────────────────────────────────────────────────
 
   static String buildImageUrl(String? dbPath) {
     if (dbPath == null || dbPath.isEmpty) return '';
@@ -638,30 +693,25 @@ class PosService {
     return '${ApiHelper.baseUrl}/api/auth/images/$type/$filename';
   }
 
-
   static Future<String> uploadCategoryImage(String filePath) async {
     final res = await ApiHelper.uploadFile<Map<String, dynamic>>(
       '/api/upload/category-image',
-      filePath: filePath,
+      filePath:  filePath,
       fieldName: 'image',
-      fromData: (data) => data as Map<String, dynamic>,
+      fromData:  (data) => data as Map<String, dynamic>,
     );
-    if (res.isSuccess && res.data != null) {
-      return res.data!['imageUrl'] as String;
-    }
+    if (res.isSuccess && res.data != null) return res.data!['imageUrl'] as String;
     throw Exception(res.message.isNotEmpty ? res.message : 'Failed to upload category image');
   }
 
   static Future<String> uploadPosProductImage(String filePath) async {
     final res = await ApiHelper.uploadFile<Map<String, dynamic>>(
       '/api/upload/pos-product-image',
-      filePath: filePath,
+      filePath:  filePath,
       fieldName: 'image',
-      fromData: (data) => data as Map<String, dynamic>,
+      fromData:  (data) => data as Map<String, dynamic>,
     );
-    if (res.isSuccess && res.data != null) {
-      return res.data!['imageUrl'] as String;
-    }
+    if (res.isSuccess && res.data != null) return res.data!['imageUrl'] as String;
     throw Exception(res.message.isNotEmpty ? res.message : 'Failed to upload product image');
   }
 
@@ -679,21 +729,16 @@ class PosService {
       default: throw Exception('Loại ảnh không hỗ trợ: $type');
     }
     final res = await ApiHelper.uploadFile<dynamic>(
-      endpoint,
-      filePath: filePath,
-      fieldName: 'image',
-      fromData: (data) => data,
+      endpoint, filePath: filePath, fieldName: 'image', fromData: (data) => data,
     );
     if (res.data != null && res.data is Map<String, dynamic>) {
-      final imageUrl = (res.data as Map<String, dynamic>)['imageUrl'] as String?;
-      if (imageUrl != null && imageUrl.isNotEmpty) return imageUrl;
+      final url = (res.data as Map<String, dynamic>)['imageUrl'] as String?;
+      if (url != null && url.isNotEmpty) return url;
     }
     throw Exception(res.message.isNotEmpty ? res.message : 'Upload ảnh thất bại (code: ${res.code})');
   }
 
-  // ════════════════════════════════════════
-  // CATEGORY
-  // ════════════════════════════════════════
+  // ── Category ─────────────────────────────────────────────────────
 
   static Future<List<PosCategoryModel>> getCategories() async {
     final res = await ApiHelper.get('$_baseUrl/categories', fromData: (data) => data);
@@ -707,58 +752,45 @@ class PosService {
 
   static Future<PosCategoryModel> createCategory({
     required String name,
-    bool singlePrice = false,
-    int displayOrder = 0,
+    bool singlePrice   = false,
+    int displayOrder   = 0,
     String? imageUrl,
   }) async {
     final body = <String, dynamic>{
-      'name': name,
-      'singlePrice': singlePrice,
-      'displayOrder': displayOrder,
+      'name': name, 'singlePrice': singlePrice, 'displayOrder': displayOrder,
       if (imageUrl != null) 'imageUrl': imageUrl,
     };
-    final res = await ApiHelper.post('$_baseUrl/categories', body: body, fromData: (data) => data);
-    if (res.isSuccess && res.data != null) {
+    final res = await ApiHelper.post('$_baseUrl/categories', body: body, fromData: (d) => d);
+    if (res.isSuccess && res.data != null)
       return PosCategoryModel.fromJson(res.data as Map<String, dynamic>);
-    }
     throw Exception(res.message.isNotEmpty ? res.message : 'Failed to create category');
   }
 
-  static Future<PosCategoryModel> updateCategory(
-      int id, {
-        String? name,
-        bool? singlePrice,
-        int? displayOrder,
-        bool? isActive,
-        String? imageUrl,
-      }) async {
+  static Future<PosCategoryModel> updateCategory(int id, {
+    String? name, bool? singlePrice, int? displayOrder, bool? isActive, String? imageUrl,
+  }) async {
     final body = <String, dynamic>{};
     if (name != null)         body['name']         = name;
     if (singlePrice != null)  body['singlePrice']  = singlePrice;
     if (displayOrder != null) body['displayOrder'] = displayOrder;
     if (isActive != null)     body['isActive']     = isActive;
     if (imageUrl != null)     body['imageUrl']     = imageUrl;
-    final res = await ApiHelper.put('$_baseUrl/categories/$id', body: body, fromData: (data) => data);
-    if (res.isSuccess && res.data != null) {
+    final res = await ApiHelper.put('$_baseUrl/categories/$id', body: body, fromData: (d) => d);
+    if (res.isSuccess && res.data != null)
       return PosCategoryModel.fromJson(res.data as Map<String, dynamic>);
-    }
     throw Exception(res.message.isNotEmpty ? res.message : 'Failed to update category');
   }
 
   static Future<void> deleteCategory(int id) async {
-    final res = await ApiHelper.delete('$_baseUrl/categories/$id', fromData: (data) => data);
-    if (!res.isSuccess) {
-      throw Exception(res.message.isNotEmpty ? res.message : 'Failed to delete category');
-    }
+    final res = await ApiHelper.delete('$_baseUrl/categories/$id', fromData: (d) => d);
+    if (!res.isSuccess) throw Exception(res.message.isNotEmpty ? res.message : 'Failed to delete category');
   }
 
-  // ════════════════════════════════════════
-  // PRODUCT
-  // ════════════════════════════════════════
+  // ── Product ──────────────────────────────────────────────────────
 
   static Future<List<PosProductModel>> getProducts({int? categoryId}) async {
     final query = categoryId != null ? '?categoryId=$categoryId' : '';
-    final res = await ApiHelper.get('$_baseUrl/products$query', fromData: (data) => data);
+    final res = await ApiHelper.get('$_baseUrl/products$query', fromData: (d) => d);
     if (res.isSuccess && res.data != null) {
       return (res.data as List<dynamic>)
           .map((e) => PosProductModel.fromJson(e as Map<String, dynamic>))
@@ -768,60 +800,38 @@ class PosService {
   }
 
   static Future<PosProductModel> getProductById(int id) async {
-    final res = await ApiHelper.get('$_baseUrl/products/$id', fromData: (data) => data);
-    if (res.isSuccess && res.data != null) {
+    final res = await ApiHelper.get('$_baseUrl/products/$id', fromData: (d) => d);
+    if (res.isSuccess && res.data != null)
       return PosProductModel.fromJson(res.data as Map<String, dynamic>);
-    }
     throw Exception(res.message.isNotEmpty ? res.message : 'Failed to load product');
   }
 
   static Future<PosProductModel> createProduct({
-    required String name,
-    required int categoryId,
-    required double basePrice,
-    String? description,
-    String? imageUrl,
-    int displayOrder = 0,
-    int vatPercent = 0,
-    bool isShopeeFood = false,
-    bool isGrabFood = false,
-    double? shopeePrice,
-    double? grabPrice,
+    required String name, required int categoryId, required double basePrice,
+    String? description, String? imageUrl, int displayOrder = 0, int vatPercent = 0,
+    bool isShopeeFood = false, bool isGrabFood = false,
+    double? shopeePrice, double? grabPrice,
   }) async {
     final body = <String, dynamic>{
-      'name': name,
-      'categoryId': categoryId,
-      'basePrice': basePrice,
-      'displayOrder': displayOrder,
-      'vatPercent': vatPercent,
-      'isShopeeFood': isShopeeFood,
-      'isGrabFood': isGrabFood,
+      'name': name, 'categoryId': categoryId, 'basePrice': basePrice,
+      'displayOrder': displayOrder, 'vatPercent': vatPercent,
+      'isShopeeFood': isShopeeFood, 'isGrabFood': isGrabFood,
       if (description != null && description.isNotEmpty) 'description': description,
       if (imageUrl != null) 'imageUrl': imageUrl,
       if (isShopeeFood && shopeePrice != null) 'shopeePrice': shopeePrice,
       if (isGrabFood && grabPrice != null) 'grabPrice': grabPrice,
     };
-    final res = await ApiHelper.post('$_baseUrl/products', body: body, fromData: (data) => data);
-    if (res.isSuccess && res.data != null) {
+    final res = await ApiHelper.post('$_baseUrl/products', body: body, fromData: (d) => d);
+    if (res.isSuccess && res.data != null)
       return PosProductModel.fromJson(res.data as Map<String, dynamic>);
-    }
     throw Exception(res.message.isNotEmpty ? res.message : 'Failed to create product');
   }
 
-  static Future<PosProductModel> updateProduct(
-      int id, {
-        String? name,
-        int? categoryId,
-        double? basePrice,
-        String? description,
-        bool? isActive,
-        String? imageUrl,
-        int? vatPercent,
-        bool? isShopeeFood,
-        bool? isGrabFood,
-        double? shopeePrice,
-        double? grabPrice,
-      }) async {
+  static Future<PosProductModel> updateProduct(int id, {
+    String? name, int? categoryId, double? basePrice, String? description,
+    bool? isActive, String? imageUrl, int? vatPercent,
+    bool? isShopeeFood, bool? isGrabFood, double? shopeePrice, double? grabPrice,
+  }) async {
     final body = <String, dynamic>{};
     if (name != null)        body['name']        = name;
     if (categoryId != null)  body['categoryId']  = categoryId;
@@ -838,123 +848,95 @@ class PosService {
       body['isGrabFood'] = isGrabFood;
       if (grabPrice != null) body['grabPrice'] = grabPrice;
     }
-    final res = await ApiHelper.put('$_baseUrl/products/$id', body: body, fromData: (data) => data);
-    if (res.isSuccess && res.data != null) {
+    final res = await ApiHelper.put('$_baseUrl/products/$id', body: body, fromData: (d) => d);
+    if (res.isSuccess && res.data != null)
       return PosProductModel.fromJson(res.data as Map<String, dynamic>);
-    }
     throw Exception(res.message.isNotEmpty ? res.message : 'Failed to update product');
   }
 
   static Future<void> updateProductOrder(int id, {required int displayOrder}) async {
-    final res = await ApiHelper.put(
-      '$_baseUrl/products/$id',
-      body: {'displayOrder': displayOrder},
-      fromData: (data) => data,
-    );
-    if (!res.isSuccess) {
+    final res = await ApiHelper.put('$_baseUrl/products/$id',
+        body: {'displayOrder': displayOrder}, fromData: (d) => d);
+    if (!res.isSuccess)
       throw Exception(res.message.isNotEmpty ? res.message : 'Failed to update product order');
-    }
   }
 
   static Future<void> deleteProduct(int id) async {
-    final res = await ApiHelper.delete('$_baseUrl/products/$id', fromData: (data) => data);
-    if (!res.isSuccess) {
+    final res = await ApiHelper.delete('$_baseUrl/products/$id', fromData: (d) => d);
+    if (!res.isSuccess)
       throw Exception(res.message.isNotEmpty ? res.message : 'Failed to delete product');
-    }
   }
 
-  // ════════════════════════════════════════
-  // INGREDIENT
-  // ════════════════════════════════════════
+  // ── Ingredient ───────────────────────────────────────────────────
 
   static Future<List<Map<String, dynamic>>> getIngredients() async {
-    final res = await ApiHelper.get('$_baseUrl/ingredients', fromData: (data) => data);
-    if (res.isSuccess && res.data != null) {
+    final res = await ApiHelper.get('$_baseUrl/ingredients', fromData: (d) => d);
+    if (res.isSuccess && res.data != null)
       return (res.data as List<dynamic>).cast<Map<String, dynamic>>();
-    }
     throw Exception(res.message.isNotEmpty ? res.message : 'Failed to load ingredients');
   }
 
   static Future<Map<String, dynamic>> createIngredient({
-    required String name,
-    required int unitPerPack,
-    int displayOrder = 0,
-    String ingredientType = 'MAIN',
-    double addonPrice = 0,
+    required String name, required int unitPerPack,
+    int displayOrder = 0, String ingredientType = 'MAIN', double addonPrice = 0,
   }) async {
     final body = <String, dynamic>{
-      'name': name,
-      'unitPerPack': unitPerPack,
-      'displayOrder': displayOrder,
-      'ingredientType': ingredientType,
-      'addonPrice': addonPrice,
+      'name': name, 'unitPerPack': unitPerPack, 'displayOrder': displayOrder,
+      'ingredientType': ingredientType, 'addonPrice': addonPrice,
     };
-    final res = await ApiHelper.post('$_baseUrl/ingredients', body: body, fromData: (data) => data);
+    final res = await ApiHelper.post('$_baseUrl/ingredients', body: body, fromData: (d) => d);
     if (res.isSuccess && res.data != null) return res.data as Map<String, dynamic>;
     throw Exception(res.message.isNotEmpty ? res.message : 'Failed to create ingredient');
   }
 
-  static Future<Map<String, dynamic>> updateIngredient(
-      int id, {
-        String? name,
-        int? unitPerPack,
-        int? displayOrder,
-        String? ingredientType,
-        double? addonPrice,
-      }) async {
+  static Future<Map<String, dynamic>> updateIngredient(int id, {
+    String? name, int? unitPerPack, int? displayOrder,
+    String? ingredientType, double? addonPrice,
+  }) async {
     final body = <String, dynamic>{};
     if (name != null)           body['name']           = name;
     if (unitPerPack != null)    body['unitPerPack']    = unitPerPack;
     if (displayOrder != null)   body['displayOrder']   = displayOrder;
     if (ingredientType != null) body['ingredientType'] = ingredientType;
     if (addonPrice != null)     body['addonPrice']     = addonPrice;
-    final res = await ApiHelper.put('$_baseUrl/ingredients/$id', body: body, fromData: (data) => data);
+    final res = await ApiHelper.put('$_baseUrl/ingredients/$id', body: body, fromData: (d) => d);
     if (res.isSuccess && res.data != null) return res.data as Map<String, dynamic>;
     throw Exception(res.message.isNotEmpty ? res.message : 'Failed to update ingredient');
   }
 
   static Future<void> deleteIngredient(int id) async {
-    final res = await ApiHelper.delete('$_baseUrl/ingredients/$id', fromData: (data) => data);
-    if (!res.isSuccess) {
+    final res = await ApiHelper.delete('$_baseUrl/ingredients/$id', fromData: (d) => d);
+    if (!res.isSuccess)
       throw Exception(res.message.isNotEmpty ? res.message : 'Failed to delete ingredient');
-    }
   }
 
-  // ════════════════════════════════════════
-  // VARIANT
-  // ════════════════════════════════════════
+  // ── Variant ──────────────────────────────────────────────────────
 
   static Future<void> createVariant(Map<String, dynamic> body) async {
-    final res = await ApiHelper.post('$_baseUrl/variants', body: body, fromData: (data) => data);
-    if (!res.isSuccess) {
+    final res = await ApiHelper.post('$_baseUrl/variants', body: body, fromData: (d) => d);
+    if (!res.isSuccess)
       throw Exception(res.message.isNotEmpty ? res.message : 'Failed to create variant');
-    }
   }
 
   static Future<void> updateVariant(int id, Map<String, dynamic> body) async {
-    final res = await ApiHelper.put('$_baseUrl/variants/$id', body: body, fromData: (data) => data);
-    if (!res.isSuccess) {
+    final res = await ApiHelper.put('$_baseUrl/variants/$id', body: body, fromData: (d) => d);
+    if (!res.isSuccess)
       throw Exception(res.message.isNotEmpty ? res.message : 'Failed to update variant');
-    }
   }
 
   static Future<void> deleteVariant(int id) async {
-    final res = await ApiHelper.delete('$_baseUrl/variants/$id', fromData: (data) => data);
-    if (!res.isSuccess) {
+    final res = await ApiHelper.delete('$_baseUrl/variants/$id', fromData: (d) => d);
+    if (!res.isSuccess)
       throw Exception(res.message.isNotEmpty ? res.message : 'Failed to delete variant');
-    }
   }
 
-  // ════════════════════════════════════════
-  // SHIFT
-  // ════════════════════════════════════════
+  // ── Shift ────────────────────────────────────────────────────────
 
   static Future<PosShiftModel?> getCurrentShift() async {
     try {
-      final res = await ApiHelper.get('$_baseUrl/shifts/current', fromData: (data) => data);
-      if (res.isSuccess && res.data != null) {
+      final res = await ApiHelper.get('$_baseUrl/shifts/current', fromData: (d) => d);
+      if (res.isSuccess && res.data != null)
         return PosShiftModel.fromJson(res.data as Map<String, dynamic>);
-      }
       return null;
     } catch (_) {
       return null;
@@ -971,10 +953,9 @@ class PosService {
       'openDenominations': openDenominations,
       if (openInventory != null) 'openInventory': openInventory,
     };
-    final res = await ApiHelper.post('$_baseUrl/shifts/open', body: body, fromData: (data) => data);
-    if (res.isSuccess && res.data != null) {
+    final res = await ApiHelper.post('$_baseUrl/shifts/open', body: body, fromData: (d) => d);
+    if (res.isSuccess && res.data != null)
       return PosShiftModel.fromJson(res.data as Map<String, dynamic>);
-    }
     throw Exception(res.message.isNotEmpty ? res.message : 'Failed to open shift');
   }
 
@@ -986,32 +967,50 @@ class PosService {
   }) async {
     final body = <String, dynamic>{
       'closeDenominations': closeDenominations,
-      'closeInventory': closeInventory,
+      'closeInventory':     closeInventory,
       if (transferAmount != null) 'transferAmount': transferAmount,
       if (note != null && note.isNotEmpty) 'note': note,
     };
-    final res = await ApiHelper.post('$_baseUrl/shifts/close', body: body, fromData: (data) => data);
-    if (res.isSuccess && res.data != null) {
+    final res = await ApiHelper.post('$_baseUrl/shifts/close', body: body, fromData: (d) => d);
+    if (res.isSuccess && res.data != null)
       return PosShiftModel.fromJson(res.data as Map<String, dynamic>);
+    String errorMsg = res.message.trim();
+    if (errorMsg.isEmpty || errorMsg == 'null' || errorMsg.contains('rỗng')) {
+      errorMsg = 'Lỗi từ server. Vui lòng kiểm tra dữ liệu nhập (mệnh giá hoặc kiểm kho).';
     }
-    throw Exception(res.message.isNotEmpty ? res.message : 'Failed to close shift');
+    throw Exception(errorMsg);
   }
 
   static Future<bool> isFirstShiftOfDay() async {
     final res = await ApiHelper.get<bool>(
       '$_baseUrl/shifts/is-first-today',
       fromData: (data) {
-        if (data is bool) return data;
+        if (data is bool)   return data;
         if (data is String) return data.toLowerCase() == 'true';
         return false;
       },
     );
-
     return res.isSuccess ? (res.data ?? false) : false;
   }
 
+  static Future<bool> verifyPosMenuPin(String pin) async {
+    if (pin.length != 6 || !RegExp(r'^\d{6}$').hasMatch(pin))
+      throw Exception('Mật khẩu phải là 6 chữ số');
+
+    final res = await ApiHelper.post(
+      '$_baseUrl/verify-menu-pin',
+      body: {'pin': pin},
+      fromData: (d) => d,
+    );
+    if (res.code == 900) return true;
+    String errorMsg = res.message?.trim() ?? 'Xác thực thất bại';
+    if (errorMsg.isEmpty || errorMsg == 'null')
+      errorMsg = 'Mật khẩu không đúng hoặc lỗi hệ thống (code ${res.code ?? "unknown"})';
+    throw Exception(errorMsg);
+  }
+
   static Future<List<PosShiftModel>> getShiftsByDate(String date) async {
-    final res = await ApiHelper.get('$_baseUrl/shifts?date=$date', fromData: (data) => data);
+    final res = await ApiHelper.get('$_baseUrl/shifts?date=$date', fromData: (d) => d);
     if (res.isSuccess && res.data != null) {
       return (res.data as List<dynamic>)
           .map((e) => PosShiftModel.fromJson(e as Map<String, dynamic>))
@@ -1021,14 +1020,12 @@ class PosService {
   }
 
   static Future<Map<String, dynamic>> getShiftReport(int shiftId) async {
-    final res = await ApiHelper.get('$_baseUrl/shifts/$shiftId/report', fromData: (data) => data);
+    final res = await ApiHelper.get('$_baseUrl/shifts/$shiftId/report', fromData: (d) => d);
     if (res.isSuccess && res.data != null) return res.data as Map<String, dynamic>;
     throw Exception(res.message.isNotEmpty ? res.message : 'Failed to load report');
   }
 
-  // ════════════════════════════════════════
-  // ORDER
-  // ════════════════════════════════════════
+  // ── Order ────────────────────────────────────────────────────────
 
   static Future<PosOrderModel> createOrder({
     required String orderSource,
@@ -1036,64 +1033,54 @@ class PosService {
     String paymentMethod = 'CASH',
     String? note,
   }) async {
-    final items = cartItems.map((c) {
-      return <String, dynamic>{
-        'productId':       c.product.id,
-        'quantity':        c.quantity,
-        'discountPercent': c.selectedPrice.discountPercent,
-        'vatPercent':      c.product.vatPercent,
-        if (c.note != null && c.note!.isNotEmpty) 'note': c.note,
-        'variantSelections': c.variantSelections
-            .where((sel) => sel.selectedIngredients.isNotEmpty)
-            .map((sel) => <String, dynamic>{
-          'variantId':    sel.variantId,
-          'isAddonGroup': sel.isAddonGroup,
-          'selectedIngredients': sel.selectedIngredients.entries.map((e) {
-            // Tìm AddonItem snapshot nếu là addon group
-            final addonItem = sel.addonItems
-                ?.where((a) => a.ingredientId == e.key)
-                .firstOrNull;
-            return <String, dynamic>{
-              'ingredientId':  e.key,
-              'selectedCount': e.value,
-              // Snapshot giá addon tại thời điểm đặt hàng
-              if (addonItem != null) ...{
-                'isAddonIngredient':  true,
-                'addonPriceSnapshot': addonItem.discountedAddonPrice,
-                'addonBasePrice':     addonItem.baseAddonPrice,
-                'addonName':          addonItem.ingredientName,
-              },
-            };
-          }).toList(),
-        })
-            .toList(),
-      };
+    final items = cartItems.map((c) => <String, dynamic>{
+      'productId':       c.product.id,
+      'quantity':        c.quantity,
+      'discountPercent': c.selectedPrice.discountPercent,
+      'vatPercent':      c.product.vatPercent,
+      if (c.note != null && c.note!.isNotEmpty) 'note': c.note,
+      'variantSelections': c.variantSelections
+          .where((sel) => sel.selectedIngredients.isNotEmpty)
+          .map((sel) => <String, dynamic>{
+        'variantId':    sel.variantId,
+        'isAddonGroup': sel.isAddonGroup,
+        'selectedIngredients': sel.selectedIngredients.entries.map((e) {
+          final addonItem = sel.addonItems
+              ?.where((a) => a.ingredientId == e.key)
+              .firstOrNull;
+          return <String, dynamic>{
+            'ingredientId':  e.key,
+            'selectedCount': e.value,
+            if (addonItem != null) ...{
+              'isAddonIngredient':  true,
+              'addonPriceSnapshot': addonItem.discountedAddonPrice,
+              'addonBasePrice':     addonItem.baseAddonPrice,
+              'addonName':          addonItem.ingredientName,
+            },
+          };
+        }).toList(),
+      }).toList(),
     }).toList();
 
     final body = <String, dynamic>{
-      'orderSource':   orderSource,
-      'paymentMethod': paymentMethod,
-      'items':         items,
+      'orderSource': orderSource, 'paymentMethod': paymentMethod, 'items': items,
       if (note != null && note.isNotEmpty) 'note': note,
     };
-
-    final res = await ApiHelper.post('$_baseUrl/orders', body: body, fromData: (data) => data);
-    if (res.isSuccess && res.data != null) {
+    final res = await ApiHelper.post('$_baseUrl/orders', body: body, fromData: (d) => d);
+    if (res.isSuccess && res.data != null)
       return PosOrderModel.fromJson(res.data as Map<String, dynamic>);
-    }
     throw Exception(res.message.isNotEmpty ? res.message : 'Failed to create order');
   }
 
   static Future<PosOrderModel> getOrderById(int id) async {
-    final res = await ApiHelper.get('$_baseUrl/orders/$id', fromData: (data) => data);
-    if (res.isSuccess && res.data != null) {
+    final res = await ApiHelper.get('$_baseUrl/orders/$id', fromData: (d) => d);
+    if (res.isSuccess && res.data != null)
       return PosOrderModel.fromJson(res.data as Map<String, dynamic>);
-    }
     throw Exception(res.message.isNotEmpty ? res.message : 'Failed to load order');
   }
 
   static Future<List<PosOrderModel>> getOrdersByShift(int shiftId) async {
-    final res = await ApiHelper.get('$_baseUrl/shifts/$shiftId/orders', fromData: (data) => data);
+    final res = await ApiHelper.get('$_baseUrl/shifts/$shiftId/orders', fromData: (d) => d);
     if (res.isSuccess && res.data != null) {
       return (res.data as List<dynamic>)
           .map((e) => PosOrderModel.fromJson(e as Map<String, dynamic>))
@@ -1106,29 +1093,31 @@ class PosService {
     final res = await ApiHelper.post(
       '$_baseUrl/orders/$orderId/cancel',
       body: {'password': password},
-      fromData: (data) => data,
+      fromData: (d) => d,
     );
-    if (res.isSuccess && res.data != null) {
+    if (res.isSuccess && res.data != null)
       return PosOrderModel.fromJson(res.data as Map<String, dynamic>);
-    }
     throw Exception(res.message.isNotEmpty ? res.message : 'Không thể hủy đơn hàng');
   }
 
-  // ════════════════════════════════════════
-  // STOCK IMPORT
-  // ════════════════════════════════════════
+  static Future<PosOrderModel> updateOrderPaymentMethod(int orderId, String newMethod) async {
+    final res = await ApiHelper.put(
+      '$_baseUrl/orders/$orderId/payment-method',
+      body: {'paymentMethod': newMethod},
+      fromData: (data) => PosOrderModel.fromJson(data as Map<String, dynamic>),
+    );
+    if (res.isSuccess && res.data != null) return res.data!;
+    throw Exception(res.message.isNotEmpty ? res.message : 'Cập nhật phương thức thanh toán thất bại');
+  }
+
+  // ── Stock import ─────────────────────────────────────────────────
 
   static Future<List<StockImportModel>> importStock(List<StockImportItem> items) async {
     final body = {
       'items': items.map((i) => {'ingredientId': i.ingredientId, 'packQty': i.packQty}).toList(),
     };
-    final res = await ApiHelper.post(
-      '$_baseUrl/shifts/stock-import',
-      body: body,
-      fromData: (data) => data,
-    );
-
-    if (res.message == "Nhập kho thành công.") {
+    final res = await ApiHelper.post('$_baseUrl/shifts/stock-import', body: body, fromData: (d) => d);
+    if (res.message == 'Nhập kho thành công.') {
       return (res.data as List<dynamic>)
           .map((e) => StockImportModel.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -1137,10 +1126,7 @@ class PosService {
   }
 
   static Future<List<StockImportModel>> getStockImports(int shiftId) async {
-    final res = await ApiHelper.get(
-      '$_baseUrl/shifts/$shiftId/stock-imports',
-      fromData: (data) => data,
-    );
+    final res = await ApiHelper.get('$_baseUrl/shifts/$shiftId/stock-imports', fromData: (d) => d);
     if (res.isSuccess && res.data != null) {
       return (res.data as List<dynamic>)
           .map((e) => StockImportModel.fromJson(e as Map<String, dynamic>))
@@ -1149,16 +1135,20 @@ class PosService {
     return [];
   }
 
-  static Future<PosOrderModel> updateOrderPaymentMethod(int orderId, String newMethod) async {
-    final body = {'paymentMethod': newMethod}; // CASH hoặc TRANSFER
-    final res = await ApiHelper.put(
-      '$_baseUrl/orders/$orderId/payment-method',
-      body: body,
-      fromData: (data) => PosOrderModel.fromJson(data as Map<String, dynamic>),
+  /// Lấy lịch sử nhập kho theo batch (dùng cho StockImportHistoryScreen)
+  static Future<List<StockImportBatch>> getStockImportHistory() async {
+    final res = await ApiHelper.get<List<StockImportBatch>>(
+      '$_baseUrl/shifts/stock-import/history',
+      fromData: (data) {
+        if (data is List) {
+          return data
+              .map((e) => StockImportBatch.fromJson(e as Map<String, dynamic>))
+              .toList();
+        }
+        return <StockImportBatch>[];
+      },
     );
-    if (res.isSuccess && res.data != null) {
-      return res.data!;
-    }
-    throw Exception(res.message.isNotEmpty ? res.message : 'Cập nhật phương thức thanh toán thất bại');
+    if (res.isSuccess && res.data != null) return res.data!;
+    return [];
   }
 }

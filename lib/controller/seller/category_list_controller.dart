@@ -240,17 +240,17 @@ class _CategoryListScreenState extends State<CategoryListScreen> with UIMixin {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            InkWell(
-                              onTap: () => print("Placeholder image"),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(Icons.delete, size: 16, color: Colors.red),
-                              ),
-                            ),
+                            // InkWell(
+                            //   onTap: () => print("Placeholder image"),
+                            //   child: Container(
+                            //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            //     decoration: BoxDecoration(
+                            //       color: Colors.red.withOpacity(0.1),
+                            //       borderRadius: BorderRadius.circular(8),
+                            //     ),
+                            //     child: const Icon(Icons.delete, size: 16, color: Colors.red),
+                            //   ),
+                            // ),
                           ],
                         ),
                       ),
@@ -299,39 +299,19 @@ class _CategoryListScreenState extends State<CategoryListScreen> with UIMixin {
   }
 
   Future<void> _goToCreate() async {
-    final result = await Get.to(() => const CategoryCreateScreen());
-    if (result == true) {
+    await Get.to(
+          () => const CategoryCreateScreen()
+    )?.then((result) async {
       await controller.fetchCategories();
-      Get.snackbar(
-        'Thành công',
-        'Đã thêm danh mục mới',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
-        margin: const EdgeInsets.all(16),
-        borderRadius: 8,
-      );
-    }
+    });
   }
 
   Future<void> _goToEdit(CategoryModel cat) async {
-    final result = await Get.to(
+    await Get.to(
           () => const CategoryEditScreen(),
       arguments: cat,
-    );
-    if (result == true) {
+    )?.then((result) async {
       await controller.fetchCategories();
-      Get.snackbar(
-        'Thành công',
-        'Đã cập nhật danh mục',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
-        margin: const EdgeInsets.all(16),
-        borderRadius: 8,
-      );
-    }
+    });
   }
 }

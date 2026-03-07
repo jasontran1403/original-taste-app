@@ -13,6 +13,7 @@ import 'package:original_taste/helper/widgets/my_spacing.dart';
 import 'package:original_taste/helper/widgets/my_text.dart';
 import 'package:original_taste/views/layout/layout.dart';
 import 'package:intl/intl.dart';
+import 'package:original_taste/views/ui/general/inventory/import_warehouse_screen.dart';
 
 import '../../../../controller/seller/inventory_history_controller.dart';
 import '../../../../helper/services/seller_services.dart';
@@ -25,7 +26,6 @@ class InventoryHistoryScreen extends StatefulWidget {
 }
 
 class _InventoryHistoryScreenState extends State<InventoryHistoryScreen> with UIMixin {
-  // Sử dụng Get.lazyPut để tránh duplicate controller
   late final InventoryHistoryController controller;
 
   @override
@@ -60,22 +60,41 @@ class _InventoryHistoryScreenState extends State<InventoryHistoryScreen> with UI
                       Padding(
                         padding: MySpacing.all(20),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            MyText.titleMedium(
-                              "Lịch sử xuất/nhập kho",
-                              style: TextStyle(
-                                fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
-                                fontWeight: FontWeight.w600,
+                            // Nút back
+                            MyContainer.bordered(
+                              onTap: () => Get.back(),
+                              color: Colors.transparent,
+                              borderRadiusAll: 10,
+                              padding: MySpacing.xy(12, 8),
+                              borderColor: contentTheme.secondary.withOpacity(0.4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.arrow_back_rounded, size: 16, color: contentTheme.secondary),
+                                  MySpacing.width(6),
+                                  MyText.bodyMedium('Quay lại', color: contentTheme.secondary, fontWeight: 600),
+                                ],
                               ),
                             ),
-                            IconButton(
-                              icon: Icon(Icons.refresh, color: contentTheme.primary),
-                              onPressed: controller.fetchLogs,
+                            MySpacing.width(12),
+
+                            // Tiêu đề
+                            Expanded(
+                              child: MyText.titleMedium(
+                                controller.ingredientName.isNotEmpty
+                                    ? 'Lịch sử: ${controller.ingredientName}'
+                                    : 'Lịch sử xuất/nhập kho',
+                                style: TextStyle(
+                                  fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
+
                       Divider(height: 0),
 
                       // Header bảng (cố định)

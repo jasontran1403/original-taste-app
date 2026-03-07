@@ -1,3 +1,4 @@
+// views/ui/general/category/category_list_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
@@ -28,7 +29,17 @@ class _CategoryListScreenState extends State<CategoryListScreen> with UIMixin {
   @override
   void initState() {
     super.initState();
-    controller = Get.put(CategoryListController());
+    // Xóa instance cũ để fetchCategories chạy lại mỗi lần vào screen
+    if (Get.isRegistered<CategoryListController>(tag: 'category_list_controller')) {
+      Get.delete<CategoryListController>(tag: 'category_list_controller', force: true);
+    }
+    controller = Get.put(CategoryListController(), tag: 'category_list_controller');
+  }
+
+  @override
+  void dispose() {
+    Get.delete<CategoryListController>(tag: 'category_list_controller', force: true);
+    super.dispose();
   }
 
   @override
@@ -194,7 +205,8 @@ class _CategoryListScreenState extends State<CategoryListScreen> with UIMixin {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(cat.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                              Text(cat.name,
+                                  style: const TextStyle(fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ],
@@ -231,24 +243,14 @@ class _CategoryListScreenState extends State<CategoryListScreen> with UIMixin {
                             InkWell(
                               onTap: () => _goToEdit(cat),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: Colors.blue.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Icon(Icons.edit, size: 16, color: Colors.blue),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            InkWell(
-                              onTap: () => print("Placeholder delete category"),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(Icons.delete, size: 16, color: Colors.red),
+                                child: const Icon(Icons.edit,
+                                    size: 16, color: Colors.blue),
                               ),
                             ),
                           ],
@@ -298,41 +300,14 @@ class _CategoryListScreenState extends State<CategoryListScreen> with UIMixin {
         '${dt.month.toString().padLeft(2, '0')}/${dt.year}';
   }
 
+  // Luôn fetch lại dù Hủy hay Lưu
   Future<void> _goToCreate() async {
-    final result = await Get.to(() => const CategoryCreateScreen());
-    if (result == true) {
-      await controller.fetchCategories();
-      Get.snackbar(
-        'Thành công',
-        'Đã thêm danh mục mới',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
-        margin: const EdgeInsets.all(16),
-        borderRadius: 8,
-      );
-    }
+    await Get.to(() => const CategoryCreateScreen());
+    await controller.fetchCategories();
   }
 
   Future<void> _goToEdit(CategoryModel cat) async {
-    final result = await Get.to(
-          () => const CategoryEditScreen(),
-      arguments: cat,
-    );
-
-    if (result == true) {
-      await controller.fetchCategories();
-      Get.snackbar(
-        'Thành công',
-        'Đã cập nhật danh mục',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
-        margin: const EdgeInsets.all(16),
-        borderRadius: 8,
-      );
-    }
+    await Get.to(() => const CategoryEditScreen(), arguments: cat);
+    await controller.fetchCategories();
   }
 }

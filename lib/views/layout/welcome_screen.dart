@@ -3,10 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:original_taste/helper/services/auth_services.dart';
 
-// ─────────────────────────────────────────────────────────────
-// WelcomeScreen — hiển thị 2s sau đăng nhập thành công,
-// sau đó fadeout và navigate đến màn chính theo role.
-// ─────────────────────────────────────────────────────────────
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -16,10 +12,10 @@ class WelcomeScreen extends StatefulWidget {
 
 class _WelcomeScreenState extends State<WelcomeScreen>
     with TickerProviderStateMixin {
-  // ── Animation controllers ──
-  late AnimationController _entryCtrl;   // logo + text vào
-  late AnimationController _pulseCtrl;  // icon nhịp đập
-  late AnimationController _exitCtrl;   // fadeout toàn màn
+
+  late AnimationController _entryCtrl;
+  late AnimationController _pulseCtrl;
+  late AnimationController _exitCtrl;
 
   late Animation<double> _logoScale;
   late Animation<double> _logoOpacity;
@@ -92,12 +88,16 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   Future<void> _start() async {
     await _entryCtrl.forward();
     await Future.delayed(const Duration(milliseconds: 1300));
+
+    _pulseCtrl.stop();
+
     await _exitCtrl.forward();
     if (mounted) {
       final role = AuthService.currentRole ?? '';
       Get.offAllNamed(AppRoutes.homeForRole(role));
     }
   }
+
 
   @override
   void dispose() {
@@ -328,7 +328,9 @@ class _LoadingDotsState extends State<_LoadingDots>
 
   @override
   void dispose() {
-    for (final c in _ctrls) c.dispose();
+    for (final c in _ctrls) {
+      c.dispose();
+    }
     super.dispose();
   }
 

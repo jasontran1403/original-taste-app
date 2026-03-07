@@ -68,7 +68,7 @@ class SignUpController extends MyController {
 
   void goToSignIn() {
     // offNamed: xóa SignUpScreen khỏi stack → controller bị dispose → formKey bị hủy
-    Get.offNamed('/auth/sign_in');
+    Get.toNamed('/auth/sign_in');
   }
 
   Future<void> onSignUp() async {

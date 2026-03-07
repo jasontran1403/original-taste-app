@@ -24,6 +24,16 @@ Future<void> main() async {
   await ThemeCustomizer.init();
 
   runApp(ChangeNotifierProvider<AppNotifier>(create: (context) => AppNotifier(), child: const MyApp()));
+
+  FlutterError.onError = (FlutterErrorDetails details) {
+    final msg = details.toString();
+    if (msg.contains('RenderChartFadeTransition') ||
+        msg.contains('_HighlightModeManager') ||
+        msg.contains('deactivated widget')) {
+      return;
+    }
+    FlutterError.presentError(details);
+  };
 }
 
 class MyApp extends StatelessWidget {
@@ -43,7 +53,19 @@ class MyApp extends StatelessWidget {
           getPages: getPageRoute(),
           builder: (context, child) {
             NavigationService.registerContext(context);
-            return Directionality(textDirection: AppTheme.textDirection, child: child ?? Container());
+            return Directionality(
+              textDirection: AppTheme.textDirection,
+              child: FocusScope(
+                canRequestFocus: true,
+                descendantsAreFocusable: true,
+                // ── Ẩn keyboard khi tap outside input, áp dụng toàn app ──
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                  child: child ?? Container(),
+                ),
+              ),
+            );
           },
           localizationsDelegates: [
             AppLocalizationsDelegate(context),

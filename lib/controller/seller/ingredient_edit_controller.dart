@@ -23,6 +23,7 @@ class IngredientEditController extends GetxController {
   void onInit() {
     super.onInit();
     final args = Get.arguments;
+    unitController.text = 'Kg';
     if (args is IngredientModel) {
       ingredient = args;
       ingredientId = args.id;
@@ -104,16 +105,26 @@ class IngredientEditController extends GetxController {
         'Đã cập nhật nguyên liệu',
         backgroundColor: Colors.green,
         colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 3),
+        margin: const EdgeInsets.all(16),
+        borderRadius: 8,
+        forwardAnimationCurve: Curves.easeOutBack,
+        reverseAnimationCurve: Curves.easeIn,
       );
       return true;
     } else {
       Get.snackbar(
         'Lỗi',
-        result.message,
+        result.message ?? 'Không thể cập nhật nguyên liệu',
         backgroundColor: Colors.red,
         colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 3),
+        margin: const EdgeInsets.all(16),
+        borderRadius: 8,
+        forwardAnimationCurve: Curves.easeOutBack,
+        reverseAnimationCurve: Curves.easeIn,
       );
       return false;
     }

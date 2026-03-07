@@ -34,8 +34,8 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
   TopBarController controller = Get.put(TopBarController());
 
   // ---- LOGOUT DIALOG ----
-  void _showLogoutDialog() {
-    Get.dialog(
+  void _showLogoutDialog() async {
+    final bool? confirmed = await Get.dialog<bool>(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Container(
@@ -46,7 +46,7 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
             children: [
               // Icon
               MyContainer.rounded(
-                color: contentTheme.danger.withValues(alpha: 0.12),
+                color: contentTheme.danger.withOpacity(0.12),
                 paddingAll: 16,
                 child: Icon(Boxicons.bx_log_out, size: 32, color: contentTheme.danger),
               ),
@@ -76,8 +76,8 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
                     // Cancel
                     Expanded(
                       child: MyButton.outlined(
-                        onPressed: () => Get.back(),
-                        borderColor: theme.colorScheme.outline.withValues(alpha: 0.4),
+                        onPressed: () => Get.back(result: false),
+                        borderColor: theme.colorScheme.outline.withOpacity(0.4),
                         padding: MySpacing.xy(0, 12),
                         child: MyText.labelLarge("Hủy", fontWeight: 600),
                       ),
@@ -87,10 +87,7 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
                     // Confirm logout
                     Expanded(
                       child: MyButton(
-                        onPressed: () {
-                          Get.back();
-                          AuthService.logout();
-                        },
+                        onPressed: () => Get.back(result: true),
                         backgroundColor: contentTheme.danger,
                         padding: MySpacing.xy(0, 12),
                         elevation: 0,
@@ -108,8 +105,14 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
           ),
         ),
       ),
-      barrierDismissible: true, // tap ngoài để đóng
+      barrierDismissible: false, // ← Quan trọng: không cho tap ngoài dismiss
     );
+
+    if (confirmed == true) {
+      // Delay nhỏ để tránh gesture conflict trên iOS release
+      await Future.delayed(const Duration(milliseconds: 120));
+      AuthService.logout();
+    }
   }
 
   @override
@@ -125,28 +128,7 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
           color: topBarTheme.background,
           child: Row(
             children: [
-              MySpacing.width(16),
-              InkWell(onTap: () => ThemeCustomizer.toggleLeftBarCondensed(), child: Icon(RemixIcons.menu_line, color: topBarTheme.onBackground)),
-              MySpacing.width(16),
-              MyText.titleMedium(widget.screensName, fontWeight: 800, xMuted: true),
               Spacer(),
-              MySpacing.width(12),
-              MouseRegion(
-                onEnter: (_) => setState(() => controller.isHovered = true),
-                onExit: (_) => setState(() => controller.isHovered = false),
-                child: InkWell(
-                  onTap: () {
-                    ThemeCustomizer.setTheme(ThemeCustomizer.instance.theme == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark);
-                    ThemeCustomizer.notify();
-                  },
-                  child: SvgPicture.asset(
-                    'assets/svg/moon.svg',
-                    width: 22,
-                    height: 22,
-                    colorFilter: ColorFilter.mode(controller.isHovered ? contentTheme.primary : contentTheme.secondary, BlendMode.srcIn),
-                  ),
-                ),
-              ),
               MySpacing.width(12),
               MouseRegion(
                 onEnter: (_) => setState(() => controller.isHoveredNotification = true),
@@ -173,22 +155,6 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
                 ),
               ),
               MySpacing.width(12),
-              MouseRegion(
-                onEnter: (_) => setState(() => controller.isHoveredSetting = true),
-                onExit: (_) => setState(() => controller.isHoveredSetting = false),
-                child: InkWell(
-                  onTap: () {
-                    controller.toggleRightBar(context);
-                  },
-                  child: SvgPicture.asset(
-                    'assets/svg/settings.svg',
-                    width: 22,
-                    height: 22,
-                    colorFilter: ColorFilter.mode(controller.isHoveredSetting ? contentTheme.primary : contentTheme.secondary, BlendMode.srcIn),
-                  ),
-                ),
-              ),
-              MySpacing.width(20),
               CustomPopupMenu(
                 backdrop: true,
                 hideFn: (hideFn) => languageHideFn = hideFn,
@@ -383,63 +349,6 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
                 Icon(Boxicons.bx_user_circle, size: 16, color: contentTheme.onBackground),
                 MySpacing.width(8),
                 MyText.labelMedium("Profile", fontWeight: 700, muted: true),
-              ],
-            ),
-          ),
-          MySpacing.height(8),
-          MyButton(
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            onPressed: () {
-              languageHideFn?.call();
-              Get.toNamed('/chat');
-            },
-            borderRadiusAll: 0,
-            padding: MySpacing.all(12),
-            splashColor: theme.colorScheme.onSurface.withAlpha(20),
-            backgroundColor: Colors.transparent,
-            child: Row(
-              children: [
-                Icon(Boxicons.bx_message_dots, size: 16, color: contentTheme.onBackground),
-                MySpacing.width(8),
-                MyText.labelMedium("Messages", fontWeight: 700, muted: true),
-              ],
-            ),
-          ),
-          MySpacing.height(8),
-          MyButton(
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            onPressed: () {
-              languageHideFn?.call();
-              Get.toNamed('/pricing');
-            },
-            borderRadiusAll: 0,
-            padding: MySpacing.all(12),
-            splashColor: theme.colorScheme.onSurface.withAlpha(20),
-            backgroundColor: Colors.transparent,
-            child: Row(
-              children: [
-                Icon(Boxicons.bx_wallet, size: 16, color: contentTheme.onBackground),
-                MySpacing.width(8),
-                MyText.labelMedium("Pricing", fontWeight: 700, muted: true),
-              ],
-            ),
-          ),
-          MySpacing.height(8),
-          MyButton(
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            onPressed: () {
-              languageHideFn?.call();
-              Get.offNamed('/auth/lock');
-            },
-            borderRadiusAll: 0,
-            padding: MySpacing.all(12),
-            splashColor: theme.colorScheme.onSurface.withAlpha(20),
-            backgroundColor: Colors.transparent,
-            child: Row(
-              children: [
-                Icon(Boxicons.bx_lock, size: 16, color: contentTheme.onBackground),
-                MySpacing.width(8),
-                MyText.labelMedium("Lock Screen", fontWeight: 700, muted: true),
               ],
             ),
           ),

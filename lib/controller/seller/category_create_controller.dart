@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -8,30 +10,14 @@ class CategoryCreateController extends GetxController {
   final formKey = GlobalKey<FormState>();
   final nameController = TextEditingController();
 
-  late int categoryId;
-  CategoryModel? category;
-
   List<PlatformFile> files = [];
-  String? currentImageUrl;
+  Uint8List? previewBytes;
   String? uploadedImageUrl;
   bool isUploading = false;
   bool isSaving = false;
-  bool isLoading = false;
 
-  @override
-  void onInit() {
-    super.onInit();
-    final args = Get.arguments;
-    if (args is CategoryModel) {
-      category = args;
-      categoryId = args.id;
-      nameController.text = args.name;
-      currentImageUrl = args.imageUrl;
-    } else if (args is int) {
-      categoryId = args;
-      _fetchCategory();
-    }
-  }
+  // Trigger để screen lắng nghe → hiện badge rồi fadeout
+  final uploadDone = false.obs;
 
   @override
   void onClose() {
@@ -39,28 +25,19 @@ class CategoryCreateController extends GetxController {
     super.onClose();
   }
 
-  Future<void> _fetchCategory() async {
-    isLoading = true;
-    update();
-    final result = await SellerService.getCategoryById(categoryId);
-    if (result.isSuccess && result.data != null) {
-      category = result.data;
-      nameController.text = category!.name;
-      currentImageUrl = category!.imageUrl;
-    }
-    isLoading = false;
-    update();
-  }
-
   Future<void> pickFiles() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       allowMultiple: false,
+      withData: true,
     );
     if (result != null && result.files.isNotEmpty) {
+      final file = result.files.first;
       files = result.files;
+      previewBytes = file.bytes;
+      uploadedImageUrl = null;
       update();
-      await _uploadImage(result.files.first);
+      await _uploadImage(file);
     }
   }
 
@@ -72,51 +49,69 @@ class CategoryCreateController extends GetxController {
     final result = await SellerService.uploadCategoryImage(file.path!);
     if (result.isSuccess && result.data != null) {
       uploadedImageUrl = result.data;
+      uploadDone.toggle(); // ← trigger badge
     } else {
       Get.snackbar('Lỗi upload', result.message,
-          backgroundColor: Colors.red, colorText: Colors.white);
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+          forwardAnimationCurve: Curves.easeOutBack);
     }
     isUploading = false;
     update();
   }
 
-  String? get activeImageUrl => uploadedImageUrl ?? currentImageUrl;
-
-  // SỬA: Trả về Future<bool> thay vì void
   Future<bool> save() async {
     if (!formKey.currentState!.validate()) return false;
     if (isUploading) {
       Get.snackbar('Chờ', 'Đang upload ảnh...',
-          backgroundColor: Colors.orange, colorText: Colors.white);
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+          forwardAnimationCurve: Curves.easeOutBack);
       return false;
     }
 
     isSaving = true;
     update();
 
-    final result = await SellerService.updateCategory(
-      id: categoryId,
-      name: nameController.text.trim(),
-      imageUrl: activeImageUrl,
+    final name = nameController.text.trim();
+    final result = await SellerService.createCategory(
+      name: name,
+      imageUrl: uploadedImageUrl,
     );
 
     isSaving = false;
     update();
 
     if (result.isSuccess) {
-      Get.snackbar('Thành công', 'Đã cập nhật danh mục',
-          backgroundColor: Colors.green, colorText: Colors.white);
+      nameController.clear();
+      files = [];
+      previewBytes = null;
+      uploadedImageUrl = null;
+      update();
+
+      Get.snackbar('Thành công', 'Đã tạo danh mục "$name"',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+          duration: const Duration(seconds: 2),
+          margin: const EdgeInsets.all(16),
+          borderRadius: 8,
+          forwardAnimationCurve: Curves.easeOutBack,
+          reverseAnimationCurve: Curves.easeIn);
       return true;
     } else {
-      Get.snackbar('Lỗi', result.message,
-          backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar('Lỗi', result.message ?? 'Không thể tạo danh mục',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+          duration: const Duration(seconds: 3),
+          margin: const EdgeInsets.all(16),
+          borderRadius: 8,
+          forwardAnimationCurve: Curves.easeOutBack,
+          reverseAnimationCurve: Curves.easeIn);
       return false;
     }
-  }
-
-  IconData getFileIcon(String name) {
-    final ext = name.split('.').last.toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(ext)) return Icons.image;
-    return Icons.insert_drive_file;
   }
 }

@@ -66,14 +66,12 @@ class SignInController extends MyController {
           duration: const Duration(seconds: 3),
         );
       } else {
-        // Thành công: giữ isLoading = true (button không bị tap lại)
-        // rồi navigate sang WelcomeScreen
         Get.offAllNamed('/welcome');
       }
     }
   }
 
   void goToSignUp() {
-    Get.offNamed('/auth/sign_up');
+    Get.toNamed('/auth/sign_up');
   }
 }

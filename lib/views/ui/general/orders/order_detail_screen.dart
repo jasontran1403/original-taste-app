@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:original_taste/helper/services/seller_services.dart';
-import 'package:original_taste/helper/theme/app_theme.dart';
+import 'package:original_taste/helper/theme/admin_theme.dart';
 import 'package:original_taste/helper/utils/mixins/ui_mixins.dart';
 import 'package:original_taste/helper/utils/my_shadow.dart';
 import 'package:original_taste/helper/widgets/my_card.dart';
@@ -20,6 +20,9 @@ import 'package:open_file/open_file.dart';
 import '../../../../controller/ui/general/orders/order_detail_controller.dart';
 import '../../../../helper/services/api_helper.dart';
 
+// Khai báo contentTheme trực tiếp (đã fix)
+final contentTheme = AdminTheme.theme.contentTheme;
+
 class OrderDetailScreen extends StatefulWidget {
   const OrderDetailScreen({super.key});
 
@@ -29,12 +32,25 @@ class OrderDetailScreen extends StatefulWidget {
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> with UIMixin {
   late OrderDetailController controller;
-  bool _isDownloading = false;
 
   @override
   void initState() {
     super.initState();
-    controller = Get.put(OrderDetailController(), tag: 'order_detail_${DateTime.now().millisecondsSinceEpoch}');
+    // Lấy order từ arguments
+    final OrderModel? passedOrder = Get.arguments as OrderModel?;
+
+    controller = Get.put(
+      OrderDetailController(order: passedOrder),
+      tag: 'order_detail_${DateTime.now().millisecondsSinceEpoch}',
+    );
+
+    // Nếu không có order → báo lỗi và back
+    if (passedOrder == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.snackbar('Lỗi', 'Không tìm thấy thông tin đơn hàng', backgroundColor: Colors.red, colorText: Colors.white);
+        Get.back();
+      });
+    }
   }
 
   @override
@@ -48,6 +64,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with UIMixin {
             child: const Center(child: CircularProgressIndicator()),
           );
         }
+
         if (ctrl.errorMessage != null) {
           return Layout(
             screenName: 'CHI TIẾT ĐƠN HÀNG',
@@ -60,8 +77,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with UIMixin {
             ),
           );
         }
+
         if (ctrl.order == null) {
-          return const Layout(screenName: 'CHI TIẾT ĐƠN HÀNG', child: SizedBox());
+          return Layout(
+            screenName: 'CHI TIẾT ĐƠN HÀNG',
+            child: Center(
+              child: MyText.bodyMedium('Không tìm thấy đơn hàng', color: Colors.red),
+            ),
+          );
         }
 
         final o = ctrl.order!;
@@ -69,7 +92,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with UIMixin {
           screenName: 'CHI TIẾT ĐƠN HÀNG',
           child: MyFlex(
             children: [
-              // ── LEFT: 9 cols ──────────────────────────────────
               MyFlexItem(
                 sizes: 'lg-9',
                 child: Column(children: [
@@ -78,7 +100,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with UIMixin {
                   _buildItemsTable(ctrl, o),
                 ]),
               ),
-              // ── RIGHT: 3 cols ─────────────────────────────────
               MyFlexItem(
                 sizes: 'lg-3',
                 child: Column(children: [
@@ -150,23 +171,25 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with UIMixin {
                   children: [
                     // Nút xuất invoice
                     MyContainer(
-                      onTap: _isDownloading ? null : () => _downloadInvoice(o),
-                      color: _isDownloading
-                          ? contentTheme.primary.withValues(alpha: 0.4)
+                      onTap: ctrl.isDownloading ? null : () => ctrl.downloadInvoice(o),
+                      color: ctrl.isDownloading
+                          ? contentTheme.primary.withOpacity(0.4)
                           : contentTheme.primary,
                       padding: MySpacing.xy(16, 10),
                       borderRadiusAll: 10,
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        _isDownloading
+                        ctrl.isDownloading
                             ? SizedBox(
-                            width: 14, height: 14,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: contentTheme.onPrimary))
-                            : Icon(Icons.picture_as_pdf_outlined,
-                            size: 15, color: contentTheme.onPrimary),
+                          width: 14, height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: contentTheme.onPrimary,
+                          ),
+                        )
+                            : Icon(Icons.picture_as_pdf_outlined, size: 15, color: contentTheme.onPrimary),
                         MySpacing.width(6),
                         MyText.bodyMedium(
-                          _isDownloading ? 'Đang tải...' : 'Xuất Invoice',
+                          ctrl.isDownloading ? 'Đang tải...' : 'Xuất Invoice',
                           color: contentTheme.onPrimary,
                           fontWeight: 600,
                         ),
@@ -652,43 +675,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with UIMixin {
     ]);
   }
 
-  // ── Download Invoice ─────────────────────────────────────────
-  Future<void> _downloadInvoice(OrderModel o) async {
-    setState(() => _isDownloading = true);
-
-    try {
-      final result = await SellerService.generateAndSendInvoice(o.id);
-
-      if (result.isSuccess) {
-        _showSuccess(result.message ?? 'Đã tạo và gửi hóa đơn thành công qua Telegram');
-      } else {
-        final errMsg = getErrorMessage(result.code, result.message ?? 'Lỗi không xác định');
-        _showError(errMsg);
-      }
-    } catch (e) {
-      _showError('Lỗi: $e');
-    } finally {
-      if (mounted) setState(() => _isDownloading = false);
-    }
-  }
-
   void _showSuccess(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
         backgroundColor: Colors.green.shade700,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _showError(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: Colors.red.shade600,
         behavior: SnackBarBehavior.floating,
       ),
     );

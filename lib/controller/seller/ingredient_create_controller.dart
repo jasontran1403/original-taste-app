@@ -39,8 +39,10 @@ class IngredientCreateController extends GetxController {
     isSaving = true;
     update();
 
+    final name = nameController.text.trim();
+
     final result = await SellerService.createIngredient(
-      name: nameController.text.trim(),
+      name: name,
       unit: unitController.text.trim(),
       stockQuantity: double.tryParse(stockQuantityController.text) ?? 0,
       importDate: importDate?.millisecondsSinceEpoch,
@@ -51,21 +53,41 @@ class IngredientCreateController extends GetxController {
     update();
 
     if (result.isSuccess) {
+      // Clear form ngay khi thành công
+      nameController.clear();
+      unitController.clear();
+      stockQuantityController.clear();
+      importDate = null;
+      expiryDate = null;
+      update();
+
+      // Toast thành công
       Get.snackbar(
         'Thành công',
-        'Đã tạo nguyên liệu "${nameController.text}"',
+        'Đã tạo nguyên liệu "$name"',
         backgroundColor: Colors.green,
         colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 2),
+        margin: const EdgeInsets.all(16),
+        borderRadius: 8,
+        forwardAnimationCurve: Curves.easeOutBack,
+        reverseAnimationCurve: Curves.easeIn,
       );
       return true;
     } else {
+      // Toast thất bại
       Get.snackbar(
         'Lỗi',
-        result.message,
+        result.message ?? 'Không thể tạo nguyên liệu',
         backgroundColor: Colors.red,
         colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 3),
+        margin: const EdgeInsets.all(16),
+        borderRadius: 8,
+        forwardAnimationCurve: Curves.easeOutBack,
+        reverseAnimationCurve: Curves.easeIn,
       );
       return false;
     }

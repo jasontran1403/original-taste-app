@@ -33,6 +33,6 @@ class ResetPasswordController extends MyController {
   }
 
   void gotoLogIn() {
-    Get.offNamed('/auth/sign_in');
+    Get.toNamed('/auth/sign_in');
   }
 }

@@ -1,214 +1,154 @@
-// controller/ui/general/product/product_edit_controller.dart
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:original_taste/helper/services/seller_services.dart';
 
-class PriceItem {
-  TextEditingController nameController;
-  TextEditingController priceController;
-  bool isDefault;
-  int? id; // ID của price khi edit (có thể null nếu là price mới)
+// ── Model cho mỗi dòng tier form ──────────────────────────────────
+class TierFormItem {
+  final TextEditingController nameController;
+  final TextEditingController minQtyController;
+  final TextEditingController maxQtyController;
+  final TextEditingController priceController;
+  int sortOrder;
 
-  PriceItem({
-    required this.nameController,
-    required this.priceController,
-    this.isDefault = false,
-    this.id,
-  });
+  TierFormItem({
+    String name = '',
+    String minQty = '0',
+    String maxQty = '',
+    String price = '',
+    this.sortOrder = 0,
+  })  : nameController = TextEditingController(text: name),
+        minQtyController = TextEditingController(text: minQty),
+        maxQtyController = TextEditingController(text: maxQty),
+        priceController = TextEditingController(text: price);
+
+  bool get isValid =>
+      nameController.text.isNotEmpty &&
+          priceController.text.isNotEmpty &&
+          double.tryParse(priceController.text) != null;
 
   void dispose() {
     nameController.dispose();
+    minQtyController.dispose();
+    maxQtyController.dispose();
     priceController.dispose();
   }
+
+  Map<String, dynamic> toJson(int idx) => {
+    'tierName': nameController.text.trim(),
+    'minQuantity': double.tryParse(minQtyController.text.trim()) ?? 0.0,
+    'maxQuantity': maxQtyController.text.trim().isEmpty
+        ? null
+        : double.tryParse(maxQtyController.text.trim()),
+    'price': double.tryParse(priceController.text.trim()) ?? 0.0,
+    'sortOrder': idx,
+  };
 }
 
 class ProductEditController extends GetxController {
   final formKey = GlobalKey<FormState>();
-  int selectedVatRate = 0;
 
-  // Basic info
+  late ProductModel product;
+
   final nameController = TextEditingController();
   final descriptionController = TextEditingController();
+  final basePriceController = TextEditingController();
 
-  // Product data
-  late int productId;
-  ProductModel? product;
-
-  // Image
-  List<PlatformFile> files = [];
-  String? currentImageUrl;
-  String? uploadedImageUrl;
-  bool isUploading = false;
-
-  // Categories
   List<CategoryModel> categories = [];
   CategoryModel? selectedCategory;
 
-  // Ingredients
+  List<PlatformFile> files = [];
+  String? uploadedImageUrl;
+  String? existingImageUrl;
+  bool isUploading = false;
+
   List<IngredientModel> ingredientOptions = [];
   IngredientModel? selectedIngredient;
 
-  // Prices
-  List<PriceItem> prices = [];
+  // Thay prices -> tiers
+  List<TierFormItem> tiers = [];
 
-  // UI States
-  bool isLoading = false;
-  bool isLoadingData = false;
+  // VAT: 0, 5, 8, 10
+  int selectedVatRate = 0;
+  final List<int> vatRateOptions = [0, 5, 8, 10];
+
   bool isSaving = false;
+  bool isLoadingData = false;
 
-  String? get activeImageUrl => uploadedImageUrl ?? currentImageUrl;
+  String? get activeImageUrl => uploadedImageUrl ?? existingImageUrl;
 
   @override
   void onInit() {
     super.onInit();
-    final args = Get.arguments;
-    if (args is ProductModel) {
-      product = args;
-      productId = args.id;
-    } else if (args is int) {
-      productId = args;
-      _fetchProduct();
-    }
-    _loadInitialData(); // Load data trước
+    product = Get.arguments as ProductModel;
+    _populateFields();
+    _loadInitialData();
   }
 
   @override
   void onClose() {
     nameController.dispose();
     descriptionController.dispose();
-    for (var price in prices) {
-      price.dispose();
-    }
+    basePriceController.dispose();
+    for (final t in tiers) t.dispose();
     super.onClose();
   }
 
-  // ── Load dữ liệu ban đầu ─────────────────────────────────────────
+  void _populateFields() {
+    nameController.text = product.name;
+    descriptionController.text = product.description ?? '';
+    existingImageUrl = product.imageUrl;
+    basePriceController.text =
+    product.basePrice > 0 ? product.basePrice.toStringAsFixed(0) : '';
+    selectedVatRate = product.vatRate;
+
+    if (product.priceTiers.isNotEmpty) {
+      for (final t in product.priceTiers) {
+        tiers.add(TierFormItem(
+          name: t.tierName,
+          minQty: _fmtQ(t.minQuantity),
+          maxQty: t.maxQuantity == null ? '' : _fmtQ(t.maxQuantity!),
+          price: t.price.toStringAsFixed(0),
+          sortOrder: t.sortOrder,
+        ));
+      }
+    }
+  }
+
+  String _fmtQ(double q) =>
+      q == q.truncateToDouble() ? q.toInt().toString() : q.toStringAsFixed(2);
+
   Future<void> _loadInitialData() async {
     isLoadingData = true;
     update();
 
-    try {
-      // Load categories
-      final catResult = await SellerService.getCategories();
-      if (catResult.isSuccess) {
-        categories = catResult.data ?? [];
-        print('📋 Loaded ${categories.length} categories');
+    final catResult = await SellerService.getCategories();
+    if (catResult.isSuccess && catResult.data != null) {
+      categories = catResult.data!;
+      if (product.categoryId != null) {
+        selectedCategory =
+            categories.where((c) => c.id == product.categoryId).firstOrNull;
       }
-
-      // Load ingredients
-      final ingResult = await SellerService.getIngredients(page: 0, size: 100);
-      if (ingResult.isSuccess) {
-        ingredientOptions = ingResult.data ?? [];
-        print('📋 Loaded ${ingredientOptions.length} ingredients');
-        print('📋 Ingredient IDs: ${ingredientOptions.map((i) => '${i.id}:${i.name}').join(', ')}');
-      }
-
-      // SAU KHI LOAD XONG, mới populate data
-      if (product != null) {
-        _populateData();
-      }
-    } catch (e) {
-      print('💥 Error loading data: $e');
-    } finally {
-      isLoadingData = false;
-      update();
-    }
-  }
-
-// Sửa _fetchProduct để populate sau khi load xong
-  Future<void> _fetchProduct() async {
-    isLoading = true;
-    update();
-
-    final result = await SellerService.getProductById(productId);
-    if (result.isSuccess && result.data != null) {
-      product = result.data;
-      // Không gọi _populateData() ngay, đợi _loadInitialData xong
-    } else {
-      Get.snackbar(
-        'Lỗi',
-        result.message,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
     }
 
-    isLoading = false;
+    final ingResult = await SellerService.getIngredients();
+    if (ingResult.isSuccess && ingResult.data != null) {
+      ingredientOptions = ingResult.data!;
+      if (product.variants.isNotEmpty &&
+          product.variants.first.ingredients.isNotEmpty) {
+        final ingId = product.variants.first.ingredients.first.ingredientId;
+        selectedIngredient =
+            ingredientOptions.where((i) => i.id == ingId).firstOrNull;
+      }
+    }
+
+    isLoadingData = false;
     update();
   }
 
-
-  // ── Populate data từ product hiện tại ────────────────────────────
-  void _populateData() {
-    if (product == null) return;
-
-    nameController.text = product!.name;
-    descriptionController.text = product!.description ?? '';
-    currentImageUrl = product!.imageUrl;
-
-    // Populate category (giữ nguyên logic cũ của bạn)
-    selectedCategory = null;
-    if (product!.categoryId != null) {
-      selectedCategory = categories.firstWhereOrNull(
-            (c) => c.id == product!.categoryId,
-      );
-    }
-    if (selectedCategory == null && product!.categoryName != null) {
-      selectedCategory = categories.firstWhereOrNull(
-            (c) => c.name.trim().toLowerCase() == product!.categoryName!.trim().toLowerCase(),
-      );
-    }
-
-    // Populate prices (giữ nguyên)
-    if (product!.prices.isNotEmpty) {
-      for (var price in product!.prices) {
-        prices.add(PriceItem(
-          id: price.id,
-          nameController: TextEditingController(text: price.priceName),
-          priceController: TextEditingController(
-            text: price.price % 1 == 0 ? price.price.toStringAsFixed(0) : price.price.toString(),
-          ),
-          isDefault: price.isDefault,
-        ));
-      }
-    } else {
-      _addDefaultPrice();
-    }
-
-    // Populate ingredient (giữ nguyên)
-    if (product!.variants.isNotEmpty) {
-      final firstVariant = product!.variants.first;
-      if (firstVariant.ingredients.isNotEmpty) {
-        final ing = firstVariant.ingredients.first;
-        selectedIngredient = ingredientOptions.firstWhereOrNull(
-              (i) => i.id == ing.ingredientId,
-        );
-      }
-    }
-
-    // Populate VAT rate hiện tại
-    selectedVatRate = product!.vatRate;  // ← THÊM DÒNG NÀY
-
-    update();
-  }
-
-  void _addDefaultPrice() {
-    if (prices.isEmpty) {
-      prices.add(PriceItem(
-        nameController: TextEditingController(text: 'Mặc định'),
-        priceController: TextEditingController(),
-        isDefault: true,
-      ));
-    }
-  }
-
-  // ── Image handling ───────────────────────────────────────────────
   Future<void> pickFiles() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-    );
+    final result = await FilePicker.platform
+        .pickFiles(type: FileType.image, allowMultiple: false);
     if (result != null && result.files.isNotEmpty) {
       files = result.files;
       update();
@@ -220,17 +160,12 @@ class ProductEditController extends GetxController {
     if (file.path == null) return;
     isUploading = true;
     update();
-
     final result = await SellerService.uploadProductImage(file.path!);
     if (result.isSuccess && result.data != null) {
       uploadedImageUrl = result.data;
     } else {
-      Get.snackbar(
-        'Lỗi upload',
-        result.message,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      Get.snackbar('Lỗi upload', result.message ?? 'Không thể upload',
+          backgroundColor: Colors.red, colorText: Colors.white);
     }
     isUploading = false;
     update();
@@ -238,316 +173,105 @@ class ProductEditController extends GetxController {
 
   void clearUploadedImage() {
     uploadedImageUrl = null;
-    files.clear();
+    files = [];
     update();
   }
 
-  // ── Price handling ───────────────────────────────────────────────
-  void addPrice() {
-    // Check if there's already a default price
-    final hasDefault = prices.any((p) => p.isDefault);
-
-    prices.add(PriceItem(
-      nameController: TextEditingController(),
-      priceController: TextEditingController(),
-      isDefault: !hasDefault && prices.isEmpty,
+  // ── Tier ops ─────────────────────────────────────────────────────
+  void addTier() {
+    // Auto-fill minQty = maxQty của khung trước
+    String autoMin = '0';
+    if (tiers.isNotEmpty) {
+      final prevMax = tiers.last.maxQtyController.text.trim();
+      autoMin = prevMax.isNotEmpty ? prevMax : '';
+    }
+    tiers.add(TierFormItem(
+      name: 'Khung ${tiers.length + 1}',
+      minQty: autoMin,
+      sortOrder: tiers.length,
     ));
     update();
   }
 
-  // ── Validation ───────────────────────────────────────────────────
-  bool _validatePrices() {
-    for (int i = 0; i < prices.length; i++) {
-      final price = prices[i];
-
-      if (price.nameController.text.trim().isEmpty) {
-        Get.snackbar(
-          'Lỗi',
-          'Vui lòng nhập tên cho giá thứ ${i + 1}',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-        return false;
-      }
-
-      final priceValue = double.tryParse(price.priceController.text);
-      if (priceValue == null || priceValue <= 0) {
-        Get.snackbar(
-          'Lỗi',
-          'Giá thứ ${i + 1} không hợp lệ',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-        return false;
-      }
-    }
-    return true;
-  }
-
-  Future<bool> setDefaultPrice(int index) async {
-    final price = prices[index];
-
-    if (price.id == null) {
-      Get.snackbar(
-        'Lỗi',
-        'Không thể set default cho giá chưa được lưu',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-      );
-      return false;
-    }
-
-    try {
-      isSaving = true;
-      update();
-
-      final result = await SellerService.setDefaultPrice(
-        productId: productId,
-        priceId: price.id!,    );
-
-      if (result.isSuccess && result.data != null) {
-        // Cập nhật lại product với dữ liệu mới
-        product = result.data;
-
-        // Cập nhật lại danh sách prices trong controller
-        _updatePricesFromProduct();
-
-        Get.snackbar(
-          'Thành công',
-          'Đã set giá mặc định',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
-        return true;
-      } else {
-        Get.snackbar(
-          'Lỗi',
-          result.message,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-        return false;
-      }
-    } catch (e) {
-      Get.snackbar(
-        'Lỗi',
-        'Không thể set giá mặc định: $e',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-      return false;
-    } finally {
-      isSaving = false;
-      update();
-    }
-  }
-
-  Future<bool> removePrice(int index) async {
-    final price = prices[index];
-
-    // Kiểm tra nếu là price default
-    if (price.isDefault) {
-      Get.snackbar(
-        'Không thể xóa',
-        'Vui lòng chọn giá mặc định khác trước khi xóa giá này',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-      );
-      return false;
-    }
-
-    // Kiểm tra nếu chỉ còn 1 price
-    if (prices.length <= 1) {
-      Get.snackbar(
-        'Không thể xóa',
-        'Sản phẩm phải có ít nhất một mức giá',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-      );
-      return false;
-    }
-
-    // Nếu là price mới (chưa có ID), chỉ cần xóa khỏi local list
-    if (price.id == null) {
-      prices.removeAt(index);
-      update();
-      Get.snackbar(
-        'Thành công',
-        'Đã xóa giá tạm thời',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
-      return true;
-    }
-
-    // Xác nhận trước khi xóa
-    final confirm = await Get.dialog<bool>(
-      AlertDialog(
-        title: const Text('Xác nhận xóa'),
-        content: Text('Bạn có chắc chắn muốn xóa giá "${price.nameController.text}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(result: false),
-            child: const Text('Hủy'),
-          ),
-          TextButton(
-            onPressed: () => Get.back(result: true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Xóa'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return false;
-
-    try {
-      isSaving = true;
-      update();
-
-      final result = await SellerService.removePrice(
-        productId: productId,
-        priceId: price.id!,
-      );
-
-      if (result.isSuccess && result.data != null) {
-        // Cập nhật lại product với dữ liệu mới
-        product = result.data;
-
-        // Cập nhật lại danh sách prices trong controller
-        _updatePricesFromProduct();
-
-        Get.snackbar(
-          'Thành công',
-          'Đã xóa giá',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
-        return true;
-      } else {
-        Get.snackbar(
-          'Lỗi',
-          result.message,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-        return false;
-      }
-    } catch (e) {
-      Get.snackbar(
-        'Lỗi',
-        'Không thể xóa giá: $e',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-      return false;
-    } finally {
-      isSaving = false;
-      update();
-    }
-  }
-
-// Helper method để cập nhật prices từ product mới
-  void _updatePricesFromProduct() {
-    if (product == null) return;
-
-    // Clear controllers cũ
-    for (var price in prices) {
-      price.dispose();
-    }
-    prices.clear();
-
-    // Tạo mới từ product
-    for (var price in product!.prices) {
-      prices.add(PriceItem(
-        id: price.id,
-        nameController: TextEditingController(text: price.priceName),
-        priceController: TextEditingController(text: price.price.toString()),
-        isDefault: price.isDefault,
-      ));
-    }
-
+  void removeTier(int index) {
+    tiers[index].dispose();
+    tiers.removeAt(index);
+    for (int i = 0; i < tiers.length; i++) tiers[i].sortOrder = i;
     update();
   }
 
+  void setVatRate(int rate) {
+    selectedVatRate = rate;
+    update();
+  }
 
-  // ── Save product ─────────────────────────────────────────────────
-  Future<bool> save() async {
-    if (!formKey.currentState!.validate()) return false;
-    if (selectedIngredient == null) {
-      Get.snackbar('Lỗi', 'Vui lòng chọn nguyên liệu cho sản phẩm', backgroundColor: Colors.red, colorText: Colors.white);
-      return false;
+  // ── Validation ────────────────────────────────────────────────────
+  String? _validate() {
+    if (nameController.text.trim().isEmpty) return 'Vui lòng nhập tên sản phẩm';
+    if (selectedIngredient == null) return 'Vui lòng chọn nguyên liệu';
+    final bp = double.tryParse(basePriceController.text.trim());
+    if (bp == null || bp < 0) return 'Giá gốc không hợp lệ';
+    for (int i = 0; i < tiers.length; i++) {
+      if (!tiers[i].isValid)
+        return 'Khung ${i + 1}: vui lòng nhập đầy đủ tên và giá';
     }
+    return null;
+  }
 
-    if (!_validatePrices()) return false;
+  // ── Save ──────────────────────────────────────────────────────────
+  Future<void> save() async {
+    final err = _validate();
+    if (err != null) {
+      Get.snackbar('Thiếu thông tin', err,
+          backgroundColor: Colors.orange, colorText: Colors.white);
+      return;
+    }
+    if (isUploading) {
+      Get.snackbar('Chờ', 'Đang upload ảnh...',
+          backgroundColor: Colors.orange, colorText: Colors.white);
+      return;
+    }
 
     isSaving = true;
     update();
 
-    try {
-      // Prepare prices data
-      final pricesData = prices.map((p) {
-        return {
-          'priceName': p.nameController.text.trim(),
-          'price': double.parse(p.priceController.text),
-          'isDefault': p.isDefault,
-          if (p.id != null) 'id': p.id,
-        };
-      }).toList();
+    final result = await SellerService.updateProduct(
+      id:           product.id,
+      name:         nameController.text.trim(),
+      description:  descriptionController.text.trim().isEmpty
+          ? null
+          : descriptionController.text.trim(),
+      unit:         'kg',
+      imageUrl:     activeImageUrl,
+      categoryId:   selectedCategory?.id,
+      categoryName: selectedCategory?.name,   // ← gửi tên để backend dùng
+      basePrice:    double.parse(basePriceController.text.trim()),
+      vatRate:      selectedVatRate,
+      tiers:        tiers.asMap().entries.map((e) => e.value.toJson(e.key)).toList(),
+      ingredients:  [
+        {'ingredientId': selectedIngredient!.id, 'quantity': 1.0}
+      ],
+    );
 
-      // Prepare variants data
-      List<Map<String, dynamic>> variantsData = [];
-      if (product!.variants.isNotEmpty) {
-        variantsData = product!.variants.map((v) {
-          return {
-            'id': v.id,
-            'variantName': v.variantName,
-            'isDefault': v.isDefault,
-            'ingredients': [
-              {'ingredientId': selectedIngredient!.id, 'quantity': 1.0}
-            ],
-          };
-        }).toList();
-      } else {
-        variantsData = [
-          {
-            'variantName': 'Mặc định',
-            'isDefault': true,
-            'ingredients': [
-              {'ingredientId': selectedIngredient!.id, 'quantity': 1.0}
-            ],
-          }
-        ];
-      }
+    isSaving = false;
+    update();
 
-      print('DEBUG: Sending update with vatRate = $selectedVatRate%');  // ← Thêm log để kiểm tra
-
-      final result = await SellerService.updateProduct(
-        id: productId,
-        name: nameController.text.trim(),
-        description: descriptionController.text.isNotEmpty ? descriptionController.text : null,
-        unit: 'kg',
-        imageUrl: activeImageUrl,
-        categoryId: selectedCategory?.id,
-        categoryName: selectedCategory?.name,
-        prices: pricesData,
-        variants: variantsData,
-        vatRate: selectedVatRate,  // ← ĐÃ CÓ, nhưng đảm bảo gửi
-      );
-
-      if (result.isSuccess) {
-        Get.snackbar('Thành công', 'Đã cập nhật sản phẩm', backgroundColor: Colors.green, colorText: Colors.white);
-        return true;
-      } else {
-        Get.snackbar('Lỗi', result.message ?? 'Không thể cập nhật', backgroundColor: Colors.red, colorText: Colors.white);
-        return false;
-      }
-    } catch (e) {
-      Get.snackbar('Lỗi', 'Không thể cập nhật sản phẩm: $e', backgroundColor: Colors.red, colorText: Colors.white);
-      return false;
-    } finally {
-      isSaving = false;
-      update();
+    if (result.isSuccess) {
+      Get.snackbar(
+          'Thành công', 'Đã cập nhật sản phẩm "${nameController.text}"',
+          backgroundColor: Colors.green, colorText: Colors.white,
+          snackPosition: SnackPosition.TOP);
+      await Future.delayed(const Duration(milliseconds: 1200));
+      Get.back(result: true);
+    } else {
+      Get.snackbar('Lỗi', result.message ?? 'Không thể cập nhật',
+          backgroundColor: Colors.red, colorText: Colors.white);
     }
+  }
+
+  IconData getFileIcon(String name) {
+    final ext = name.split('.').last.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(ext)) return Icons.image;
+    return Icons.insert_drive_file;
   }
 }

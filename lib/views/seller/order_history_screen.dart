@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:original_taste/controller/my_controller.dart';
 import 'package:original_taste/helper/services/seller_services.dart';
-import 'package:original_taste/helper/theme/app_theme.dart';
+import 'package:original_taste/helper/theme/admin_theme.dart'; // ← Import file chứa AdminTheme
 import 'package:original_taste/helper/utils/mixins/ui_mixins.dart';
 import 'package:original_taste/helper/utils/my_shadow.dart';
 import 'package:original_taste/helper/widgets/my_card.dart';
@@ -11,11 +11,15 @@ import 'package:original_taste/helper/widgets/my_spacing.dart';
 import 'package:original_taste/helper/widgets/my_text.dart';
 import 'package:original_taste/views/layout/layout.dart';
 import 'package:http/http.dart' as http;
+import 'package:original_taste/views/ui/general/invoice/invoice_details_screen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'dart:io';
 
 import '../../helper/services/api_helper.dart';
+
+// Khai báo contentTheme trực tiếp từ AdminTheme (fix lỗi 1)
+final contentTheme = AdminTheme.theme.contentTheme;
 
 // ══════════════════════════════════════════════════════════════════
 // CONTROLLER
@@ -64,7 +68,49 @@ class OrderHistoryScreen extends StatelessWidget {
       tag: 'order_history',
       builder: (ctrl) => Layout(
         screenName: 'LỊCH SỬ ĐƠN HÀNG',
-        child: _OrderHistoryBody(ctrl: ctrl),
+        child: Column(
+          children: [
+            // Nút quay lại - nằm ngay dưới tiêu đề, phía trên list order
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: GestureDetector(
+                  onTap: () => Get.back(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: contentTheme.primary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: contentTheme.primary.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.arrow_back_rounded,
+                          size: 20,
+                          color: contentTheme.primary,
+                        ),
+                        MySpacing.width(8),
+                        MyText.bodyMedium(
+                          'Quay lại giỏ hàng',
+                          color: contentTheme.primary,
+                          fontWeight: 700, // ← Sửa fontWeight thành int (fix lỗi 2)
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Nội dung list order
+            Expanded(
+              child: _OrderHistoryBody(ctrl: ctrl),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -77,12 +123,7 @@ class _OrderHistoryBody extends StatelessWidget with UIMixin {
   @override
   Widget build(BuildContext context) {
     if (ctrl.isLoading) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(60),
-          child: CircularProgressIndicator(),
-        ),
-      );
+      return const Center(child: Padding(padding: EdgeInsets.all(60), child: CircularProgressIndicator()));
     }
 
     if (ctrl.errorMessage != null) {
@@ -109,8 +150,7 @@ class _OrderHistoryBody extends StatelessWidget with UIMixin {
         child: Padding(
           padding: const EdgeInsets.all(60),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.receipt_long_outlined, size: 72,
-                color: contentTheme.secondary.withValues(alpha: 0.2)),
+            Icon(Icons.receipt_long_outlined, size: 72, color: contentTheme.secondary.withOpacity(0.2)),
             MySpacing.height(16),
             MyText.titleMedium('Chưa có đơn hàng nào', muted: true),
             MySpacing.height(6),
@@ -126,7 +166,15 @@ class _OrderHistoryBody extends StatelessWidget with UIMixin {
         padding: MySpacing.all(16),
         itemCount: ctrl.orders.length,
         separatorBuilder: (_, __) => MySpacing.height(12),
-        itemBuilder: (ctx, i) => _OrderCard(order: ctrl.orders[i]),
+        itemBuilder: (ctx, i) {
+          final order = ctrl.orders[i];
+          return GestureDetector(
+            onTap: () {
+              Get.toNamed('/order-detail', arguments: order); // Chuyển sang OrderDetailScreen
+            },
+            child: _OrderCard(order: order),
+          );
+        },
       ),
     );
   }
@@ -244,24 +292,13 @@ class _OrderCardState extends State<_OrderCard> with UIMixin {
                 // Số tiền
                 Row(children: [
                   MyText.bodySmall('Tổng: ', muted: true),
-                  if (o.discountAmount > 0) ...[
-                    Text(
-                      _fmt(o.totalAmount),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: contentTheme.secondary.withValues(alpha: 0.45),
-                        decoration: TextDecoration.lineThrough,
-                      ),
-                    ),
-                    MySpacing.width(6),
-                  ],
                   MyText.bodyMedium(
                     _fmt(o.finalAmount),
                     style: TextStyle(
                       fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
-                      color: contentTheme.primary,
+                      color: Colors.green,
                     ),
                   ),
                   if (o.discountAmount > 0) ...[
@@ -274,7 +311,7 @@ class _OrderCardState extends State<_OrderCard> with UIMixin {
                       ),
                       child: MyText.labelSmall(
                         '-${_fmt(o.discountAmount)}',
-                        color: Colors.green,
+                        color: contentTheme.danger,
                         fontWeight: 600,
                       ),
                     ),
@@ -293,10 +330,7 @@ class _OrderCardState extends State<_OrderCard> with UIMixin {
                 child: _ActionButton(
                   icon: Icons.visibility_outlined,
                   label: 'Chi tiết',
-                  onTap: () => Get.toNamed(
-                    '/order-detail',
-                    arguments: o,
-                  ),
+                  onTap: () => Get.to(() => const InvoiceDetailsScreen(), arguments: o.id),
                   outlined: true,
                 ),
               ),

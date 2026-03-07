@@ -27,7 +27,8 @@ class ProductListController extends GetxController {
 
   @override
   void onClose() {
-    scrollController.dispose();
+    scrollController.removeListener(_onScroll);
+    scrollController.dispose();  // ← Quan trọng: dispose controller khi controller bị xóa
     super.onClose();
   }
 
@@ -41,7 +42,10 @@ class ProductListController extends GetxController {
   }
 
   Future<void> fetchProducts({bool refresh = false}) async {
+    // Guard: không fetch nếu đang loading
+    print("Loaded products");
     if (refresh) {
+      if (isLoading) return;           // ← tránh double-call
       _currentPage = 0;
       hasMore = true;
       products.clear();
