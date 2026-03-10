@@ -3,6 +3,8 @@ import 'package:original_taste/controller/ui/general/dashboard_controller.dart'
     show DashboardPeriod;
 import 'package:original_taste/helper/services/api_helper.dart';
 
+import '../../controller/ui/general/pos_dashboard_controller.dart';
+
 // ══════════════════════════════════════════════════════════════════
 // RESTAURANT DASHBOARD MODELS
 // ══════════════════════════════════════════════════════════════════
@@ -367,52 +369,8 @@ class RestaurantDashboardModel {
 
 const String _dashboardBase = '/api/admin/dashboard';
 
-class DashboardService {
-  static Future<ApiResult<RestaurantDashboardModel>> getRestaurantDashboard({
-    DashboardPeriod period = DashboardPeriod.days30,
-    DateTime? fromDate,
-    DateTime? toDate,
-    required String mode,
-  }) async {
-    final params = <String, String>{
-      'period': period.apiValue,
-      'mode':   mode,
-    };
+class PosDashboardService {
 
-    if (period == DashboardPeriod.custom) {
-      if (fromDate != null) params['fromTs'] = fromDate.millisecondsSinceEpoch.toString();
-      if (toDate   != null) params['toTs']   = toDate.millisecondsSinceEpoch.toString();
-    }
-
-    return ApiHelper.get<RestaurantDashboardModel>(
-      '$_dashboardBase/restaurant',
-      queryParams: params,
-      fromData: (d) => d != null
-          ? RestaurantDashboardModel.fromJson(d as Map<String, dynamic>)
-          : null,
-    );
-  }
-
-  static Future<ApiResult<PosDashboardModel>> getPosDashboard({
-    DashboardPeriod period = DashboardPeriod.days30,
-    DateTime? fromDate,
-    DateTime? toDate,
-  }) async {
-    final params = <String, String>{'period': period.apiValue};
-
-    if (period == DashboardPeriod.custom) {
-      if (fromDate != null) params['fromTs'] = fromDate.millisecondsSinceEpoch.toString();
-      if (toDate   != null) params['toTs']   = toDate.millisecondsSinceEpoch.toString();
-    }
-
-    return ApiHelper.get<PosDashboardModel>(
-      '$_dashboardBase/pos',
-      queryParams: params,
-      fromData: (d) => d != null
-          ? PosDashboardModel.fromJson(d as Map<String, dynamic>)
-          : null,
-    );
-  }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -682,7 +640,7 @@ class PosRecentOrderModel {
 
 // ── Top-level POS Dashboard Model ────────────────────────────────
 
-class PosDashboardModel {
+class PosAdminDashboardModel {
   final PosOrderSummaryModel     orderSummary;
   final PosRevenueSummaryModel   revenueSummary;
   final PosPaymentBreakdownModel paymentBreakdown;
@@ -690,7 +648,7 @@ class PosDashboardModel {
   final List<PosOrderByTimeModel> ordersByTime;
   final List<PosRecentOrderModel> recentOrders;
 
-  const PosDashboardModel({
+  const PosAdminDashboardModel({
     required this.orderSummary,
     required this.revenueSummary,
     required this.paymentBreakdown,
@@ -699,7 +657,7 @@ class PosDashboardModel {
     required this.recentOrders,
   });
 
-  factory PosDashboardModel.fromJson(Map<String, dynamic> j) => PosDashboardModel(
+  factory PosAdminDashboardModel.fromJson(Map<String, dynamic> j) => PosAdminDashboardModel(
     orderSummary:     PosOrderSummaryModel.fromJson(_m(j['orderSummary'])),
     revenueSummary:   PosRevenueSummaryModel.fromJson(_m(j['revenueSummary'])),
     paymentBreakdown: PosPaymentBreakdownModel.fromJson(_m(j['paymentBreakdown'])),
@@ -712,3 +670,26 @@ class PosDashboardModel {
 // ══════════════════════════════════════════════════════════════════
 // POS DASHBOARD SERVICE
 // ══════════════════════════════════════════════════════════════════
+
+class PosAdminDashboardService {
+  static Future<ApiResult<PosAdminDashboardModel>> getPosDashboard({
+    PosDashboardPeriod period = PosDashboardPeriod.days30,
+    DateTime? fromDate,
+    DateTime? toDate,
+  }) async {
+    final params = <String, String>{'period': period.apiValue};
+
+    if (period == DashboardPeriod.custom) {
+      if (fromDate != null) params['fromTs'] = fromDate.millisecondsSinceEpoch.toString();
+      if (toDate   != null) params['toTs']   = toDate.millisecondsSinceEpoch.toString();
+    }
+
+    return ApiHelper.get<PosAdminDashboardModel>(
+      '$_dashboardBase/pos',
+      queryParams: params,
+      fromData: (d) => d != null
+          ? PosAdminDashboardModel.fromJson(d as Map<String, dynamic>)
+          : null,
+    );
+  }
+}

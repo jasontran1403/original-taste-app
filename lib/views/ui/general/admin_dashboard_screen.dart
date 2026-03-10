@@ -9,8 +9,6 @@ import 'package:original_taste/helper/utils/mixins/ui_mixins.dart';
 import 'package:original_taste/helper/widgets/my_spacing.dart';
 import 'package:original_taste/helper/widgets/my_text.dart';
 import 'package:original_taste/views/layout/layout.dart';
-import 'package:original_taste/views/ui/general/seller_wholesale_dashboard_screen.dart';
-import 'package:original_taste/views/ui/general/seller_retail_dashboard_screen.dart';
 import 'package:original_taste/views/ui/general/pos_dashboard_screen.dart';
 
 final _ct = AdminTheme.theme.contentTheme;
@@ -53,7 +51,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with UIMixi
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          _buildModeToggle(c),
           const SizedBox(width: 12),
           Expanded(child: _buildPeriodFilter(c)),
           const SizedBox(width: 8),
@@ -69,43 +66,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with UIMixi
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildModeToggle(DashboardController c) {
-    return Container(
-      height: 34,
-      decoration: BoxDecoration(
-        color: _ct.secondary.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: _ct.secondary.withOpacity(0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _modeTab(c, DashboardMode.pos,       'POS'),
-          _modeTab(c, DashboardMode.wholesale, 'Sỉ'),
-          _modeTab(c, DashboardMode.retail,    'Lẻ'),
-        ],
-      ),
-    );
-  }
-
-  Widget _modeTab(DashboardController c, DashboardMode mode, String label) {
-    final sel = c.mode == mode;
-    return GestureDetector(
-      onTap: () => c.setMode(mode),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: sel ? _ct.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(label,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                color: sel ? _ct.onPrimary : _ct.secondary)),
       ),
     );
   }
@@ -184,34 +144,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with UIMixi
   }
 
   Widget _buildModeContent(DashboardController c) {
-    // POS: loading/error/data đều do PosDashboardScreen tự xử lý
-    if (c.mode == DashboardMode.pos) {
-      return const PosDashboardScreen();
-    }
-
-    // Wholesale / Retail: loading và error xử lý ở đây
-    if (c.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
     if (c.errorMsg.isNotEmpty) {
       return _buildError(c);
     }
-    if (c.data == null) {
-      return const Center(child: Text('Không có dữ liệu'));
-    }
 
-    return switch (c.mode) {
-      DashboardMode.wholesale => SellerWholesaleDashboardScreen(data: c.data!),
-      DashboardMode.retail    => SellerRetailDashboardScreen(data: c.data!),
-      _                       => const SizedBox.shrink(),
-    };
+    return const PosDashboardScreen();
   }
 
   Widget _buildError(DashboardController c) => Center(
     child: Column(mainAxisSize: MainAxisSize.min, children: [
       Icon(Icons.error_outline, size: 52, color: _ct.danger),
       MySpacing.height(12),
-      MyText.bodyMedium(c.errorMsg, color: _ct.danger),
+      MyText.bodyMedium(c.posErrorMsg, color: _ct.danger),
       MySpacing.height(16),
       ElevatedButton.icon(
         onPressed: c.reload,

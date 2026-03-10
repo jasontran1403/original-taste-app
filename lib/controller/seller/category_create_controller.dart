@@ -16,6 +16,10 @@ class CategoryCreateController extends GetxController {
   bool isUploading = false;
   bool isSaving = false;
 
+  // ── Upload error — block nút Lưu ────────────────────────────────
+  String? uploadError;
+  bool get hasUploadError => uploadError != null;
+
   // Trigger để screen lắng nghe → hiện badge rồi fadeout
   final uploadDone = false.obs;
 
@@ -35,7 +39,9 @@ class CategoryCreateController extends GetxController {
       final file = result.files.first;
       files = result.files;
       previewBytes = file.bytes;
+      // Reset lỗi cũ khi user chọn file mới
       uploadedImageUrl = null;
+      uploadError = null;
       update();
       await _uploadImage(file);
     }
@@ -44,20 +50,33 @@ class CategoryCreateController extends GetxController {
   Future<void> _uploadImage(PlatformFile file) async {
     if (file.path == null) return;
     isUploading = true;
+    uploadError = null;
     update();
 
     final result = await SellerService.uploadCategoryImage(file.path!);
+    print('${result.code} - ${result.data}');
+
+    isUploading = false;
+
     if (result.isSuccess && result.data != null) {
       uploadedImageUrl = result.data;
+      uploadError = null;
       uploadDone.toggle(); // ← trigger badge
     } else {
-      Get.snackbar('Lỗi upload', result.message,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.TOP,
-          forwardAnimationCurve: Curves.easeOutBack);
+      uploadedImageUrl = null;
+      uploadError = result.message?.isNotEmpty == true
+          ? result.message!
+          : 'Upload thất bại. Vui lòng thử lại.';
     }
-    isUploading = false;
+
+    update();
+  }
+
+  void clearImage() {
+    files = [];
+    previewBytes = null;
+    uploadedImageUrl = null;
+    uploadError = null;
     update();
   }
 
@@ -89,6 +108,7 @@ class CategoryCreateController extends GetxController {
       files = [];
       previewBytes = null;
       uploadedImageUrl = null;
+      uploadError = null;
       update();
 
       Get.snackbar('Thành công', 'Đã tạo danh mục "$name"',

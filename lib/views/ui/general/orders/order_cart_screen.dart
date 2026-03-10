@@ -927,7 +927,7 @@ class _OrderCartScreenState extends State<OrderCartScreen> with UIMixin {
     }
 
     final w = MediaQuery.of(context).size.width;
-    final cols = w < 600 ? 1 : w < 900 ? 3 : w < 1200 ? 3 : 4;
+    final cols = w < 600 ? 2 : w < 900 ? 3 : w < 1200 ? 3 : 4;
 
     return GridView.builder(
       padding: MySpacing.all(8),

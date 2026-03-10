@@ -12,6 +12,7 @@ import 'package:original_taste/views/ui/general/material/ingredient_list_screen.
 import 'package:original_taste/views/ui/general/orders/order_cart_screen.dart';
 import 'package:original_taste/views/ui/general/product/product_detail_screen.dart';
 import 'package:original_taste/views/ui/general/product/product_list_screen.dart';
+import 'package:original_taste/views/ui/general/superadmin_dashboard_screen.dart';
 import 'package:original_taste/views/ui/general/warehouse_dashboard.dart';
 import 'package:original_taste/views/layout/welcome_screen.dart';
 import 'package:original_taste/views/ui/general/accountant_dashboard.dart';
@@ -58,7 +59,14 @@ List<GetPage> getPageRoute() {
     GetPage(name: '/auth/reset_password', page: () => ResetPasswordScreen()),
 
     GetPage(
-      name: '/dashboard',
+      name: '/superadmin/dashboard',
+      page: () => SuperAdminDashboardScreen(),
+      transition: Transition.noTransition,
+      middlewares: [RoleMiddleware(['SUPERADMIN'])],
+    ),
+
+    GetPage(
+      name: '/admin/dashboard',
       page: () => AdminDashboardScreen(),
       transition: Transition.noTransition,
       middlewares: [RoleMiddleware(['ADMIN'])],
@@ -67,7 +75,7 @@ List<GetPage> getPageRoute() {
       name: '/seller/order',
       page: () => OrderCartScreen(),
       transition: Transition.noTransition,
-      middlewares: [RoleMiddleware(['SELLER', 'ADMIN'])],
+      middlewares: [RoleMiddleware(['SELLER', 'SUPERADMIN'])],
     ),
     GetPage(
       name: '/shiper/home',
@@ -98,7 +106,7 @@ List<GetPage> getPageRoute() {
       name: '/seller/order',
       page: () => OrderCartScreen(),
       transition: Transition.noTransition,
-      middlewares: [RoleMiddleware(['SELLER', 'SHIPER', 'ADMIN'])],
+      middlewares: [RoleMiddleware(['SELLER', 'SHIPER', 'SUPERADMIN'])],
     ),
 
     // ── Products ──
@@ -106,13 +114,13 @@ List<GetPage> getPageRoute() {
       name: '/seller/product',
       page: () => ProductListScreen(),
       transition: Transition.noTransition,
-      middlewares: [RoleMiddleware(['ADMIN', 'SELLER'])],
+      middlewares: [RoleMiddleware(['SUPERADMIN', 'SELLER'])],
     ),
     GetPage(
       name: '/products/detail',
       page: () => ProductDetailScreen(),
       transition: Transition.noTransition,
-      middlewares: [RoleMiddleware(['ADMIN', 'SELLER'])],
+      middlewares: [RoleMiddleware(['SUPERADMIN', 'SELLER'])],
     ),
 
     // ── Categories ──
@@ -120,14 +128,14 @@ List<GetPage> getPageRoute() {
       name: '/seller/category',
       page: () => CategoryListScreen(),
       transition: Transition.noTransition,
-      middlewares: [RoleMiddleware(['ADMIN', 'SELLER'])],
+      middlewares: [RoleMiddleware(['SUPERADMIN', 'SELLER'])],
     ),
 
     GetPage(
       name: '/seller/ingredient',
       page: () => IngredientListScreen(),
       transition: Transition.noTransition,
-      middlewares: [RoleMiddleware(['ADMIN', 'SELLER'])],
+      middlewares: [RoleMiddleware(['SUPERADMIN', 'SELLER'])],
     ),
   ];
 }

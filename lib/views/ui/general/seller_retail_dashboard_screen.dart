@@ -8,45 +8,45 @@ import 'package:original_taste/helper/theme/admin_theme.dart';
 import 'package:original_taste/helper/utils/mixins/ui_mixins.dart';
 import 'package:original_taste/helper/utils/my_shadow.dart';
 import 'package:original_taste/helper/widgets/my_card.dart';
-import 'package:original_taste/helper/widgets/my_spacing.dart';
 import 'package:original_taste/helper/widgets/my_text.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:syncfusion_flutter_maps/maps.dart';
 
-import '../../../controller/ui/general/dashboard_controller.dart';
-import '../../../helper/services/dashboard_services.dart';
+import '../../../controller/ui/general/super_admin_dashboard_controller.dart';
+import '../../../helper/services/super_admin_dashboard_services.dart';
 
 final _ct = AdminTheme.theme.contentTheme;
 
 const _kPaymentColors = [
-  Color(0xFF2563EB), // xanh dương — Tiền mặt
-  Color(0xFF16A34A), // xanh lá   — Chuyển khoản
-  Color(0xFFD946EF), // tím        — MoMo
-  Color(0xFFEA580C), // cam        — VNPay
-  Color(0xFF0891B2), // teal       — ZaloPay
-  Color(0xFF7C3AED), // violet     — khác
-  Color(0xFFF59E0B), // vàng
-  Color(0xFFE11D48), // đỏ
+  Color(0xFF2563EB),
+  Color(0xFF16A34A),
+  Color(0xFFD946EF),
+  Color(0xFFEA580C),
+  Color(0xFF0891B2),
+  Color(0xFF7C3AED),
+  Color(0xFFF59E0B),
+  Color(0xFFE11D48),
 ];
 
 Color _paymentColor(int i) => _kPaymentColors[i % _kPaymentColors.length];
 
 class SellerRetailDashboardScreen extends StatefulWidget {
-  final RestaurantDashboardModel? data;
+  final SuperAdminRestaurantDashboardModel? data;
 
   const SellerRetailDashboardScreen({super.key, this.data});
 
   @override
-  State<SellerRetailDashboardScreen> createState() => _SellerRetailDashboardScreenState();
+  State<SellerRetailDashboardScreen> createState() =>
+      _SellerRetailDashboardScreenState();
 }
 
-class _SellerRetailDashboardScreenState extends State<SellerRetailDashboardScreen> with UIMixin {
-  // State cho bản đồ (nếu sau này thêm lại _buildRegionChart)
+class _SellerRetailDashboardScreenState
+    extends State<SellerRetailDashboardScreen>
+    with UIMixin {
   String? _activeRegion;
   final MapShapeLayerController _mapController = MapShapeLayerController();
   final ScrollController _scrollCtrl = ScrollController(keepScrollOffset: false);
 
-  // Format helpers
   String _fmtCurrency(double v) => NumberFormat('#,###', 'vi_VN').format(v);
   String _fmtNum(num v) => NumberFormat('#,###', 'vi_VN').format(v);
   String _fmtDate(int? ts) {
@@ -63,7 +63,7 @@ class _SellerRetailDashboardScreenState extends State<SellerRetailDashboardScree
   @override
   Widget build(BuildContext context) {
     final d = widget.data;
-    final c = Get.find<DashboardController>();
+    final c = Get.find<SuperAdminDashboardController>();
 
     if (d == null) {
       return const Center(
@@ -72,114 +72,133 @@ class _SellerRetailDashboardScreenState extends State<SellerRetailDashboardScree
           children: [
             Icon(Icons.hourglass_empty, size: 60, color: Colors.grey),
             SizedBox(height: 16),
-            Text('Dashboard Lẻ - Đang phát triển', style: TextStyle(fontSize: 18, color: Colors.grey)),
+            Text('Dashboard Lẻ - Đang phát triển',
+                style: TextStyle(fontSize: 18, color: Colors.grey)),
           ],
         ),
       );
     }
 
-    // Dùng chung data giống Wholesale, render full layout
     return RefreshIndicator(
-        color: _ct.primary,
-        onRefresh: () async {
-          if (!mounted) return;
-          c.pullRefresh();
-          await Future.doWhile(() async {
-            await Future.delayed(const Duration(milliseconds: 80));
-            return mounted && c.isLoading;
-          });
-        },
-        child: SingleChildScrollView(
-          key: const PageStorageKey<String>('retail_dashboard_scroll'),
-          controller: _scrollCtrl,
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              // Row 1: 4 stat cards (giống Wholesale)
-              _buildCards(d),
+      color: _ct.primary,
+      onRefresh: () async {
+        if (!mounted) return;
+        c.pullRefresh();
+        await Future.doWhile(() async {
+          await Future.delayed(const Duration(milliseconds: 80));
+          return mounted && c.isLoading;
+        });
+      },
+      child: SingleChildScrollView(
+        key: const PageStorageKey<String>('retail_dashboard_scroll'),
+        controller: _scrollCtrl,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 600;
+            return Column(children: [
+              // ── 4 stat cards ──────────────────────────────────
+              _buildCards(d, isNarrow: isNarrow),
               const SizedBox(height: 14),
 
-              // Row 2: time series chart + payment pie (giống Wholesale)
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+              // ── Chart + Payment pie ───────────────────────────
+              if (isNarrow) ...[
+                _buildChart(d),
+                const SizedBox(height: 14),
+                _buildPaymentPie(d),
+              ] else
+                IntrinsicHeight(
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     Expanded(flex: 3, child: _buildChart(d)),
                     const SizedBox(width: 12),
                     Expanded(flex: 2, child: _buildPaymentPie(d)),
-                  ],
+                  ]),
                 ),
-              ),
               const SizedBox(height: 14),
 
-              // Row 3: Top nhân viên (giữ width flex 3, như cũ)
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+              // ── Map + Top products ────────────────────────────
+              if (isNarrow) ...[
+                _buildRegionChart(d),
+                const SizedBox(height: 14),
+                _buildTopProducts(d),
+              ] else
+                IntrinsicHeight(
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     Expanded(flex: 3, child: _buildRegionChart(d)),
                     const SizedBox(width: 12),
                     Expanded(flex: 2, child: _buildTopProducts(d)),
-                  ],
+                  ]),
                 ),
-              ),
               const SizedBox(height: 14),
 
-              // Row 4: Top sản phẩm chiếm full width 100%
-              _buildTopProducts(d),
+              // ── Top users full width ──────────────────────────
+              _buildTopUsers(d),
               const SizedBox(height: 14),
 
-              // Row 5: Recent orders (giống Wholesale)
-              _buildRecentOrders(d),
+              // ── Recent orders ─────────────────────────────────
+              _buildRecentOrders(d, isNarrow: isNarrow),
               const SizedBox(height: 16),
-            ],
-          ),
+            ]);
+          },
         ),
+      ),
     );
   }
 
   // =====================================================================
-  // Các hàm UI (giống Wholesale, copy nguyên)
+  // STAT CARDS
   // =====================================================================
-
-  Widget _buildCards(RestaurantDashboardModel d) {
-    return Row(children: [
-      Expanded(child: _StatCard(
-        icon: Icons.receipt_long_outlined, color: _ct.primary,
-        title: 'Đơn hàng',
+  Widget _buildCards(SuperAdminRestaurantDashboardModel d, {bool isNarrow = false}) {
+    final cards = [
+      _StatCard(
+        icon: Icons.receipt_long_outlined, color: _ct.primary, title: 'Đơn hàng',
         value: d.orderSummary.totalOrders, isCurrency: false,
         line1: 'Hoàn thành: ${_fmtNum(d.orderSummary.completedOrders)}',
         line2: 'Đang xử lý: ${_fmtNum(d.orderSummary.activeOrders)}',
-      )),
-      const SizedBox(width: 10),
-      Expanded(child: _StatCard(
-        icon: Icons.people_outline, color: _ct.success,
-        title: 'Khách hàng',
+      ),
+      _StatCard(
+        icon: Icons.people_outline, color: _ct.success, title: 'Khách hàng',
         value: d.customerSummary.total, isCurrency: false,
         line1: 'Mới (lần đầu): ${_fmtNum(d.customerSummary.newCustomers)}',
         line2: 'Quay lại: ${_fmtNum(d.customerSummary.returningCustomers)}',
-      )),
-      const SizedBox(width: 10),
-      Expanded(child: _StatCard(
-        icon: Icons.check_circle_outline, color: Colors.green,
-        title: 'Doanh thu',
+      ),
+      _StatCard(
+        icon: Icons.check_circle_outline, color: Colors.green, title: 'Doanh thu',
         value: d.revenueSummary.completedRevenue, isCurrency: true,
         line1: 'CK: ${_fmtCurrency(d.revenueSummary.totalDiscount)}',
         line2: 'VAT: ${_fmtCurrency(d.revenueSummary.totalVat)}',
-      )),
-      const SizedBox(width: 10),
-      Expanded(child: _StatCard(
-        icon: Icons.pending_outlined, color: Colors.orange,
-        title: 'Thống kê',
+      ),
+      _StatCard(
+        icon: Icons.pending_outlined, color: Colors.orange, title: 'Thống kê',
         value: d.revenueSummary.pendingRevenue, isCurrency: true,
         line1: 'Hủy: ${_fmtNum(d.orderSummary.cancelledOrders)} đơn',
         line2: 'Thất bại: ${_fmtNum(d.orderSummary.failedOrders)} đơn',
-      )),
+      ),
+    ];
+    if (isNarrow) {
+      return Column(children: [
+        Row(children: [
+          Expanded(child: cards[0]), const SizedBox(width: 10), Expanded(child: cards[1]),
+        ]),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: cards[2]), const SizedBox(width: 10), Expanded(child: cards[3]),
+        ]),
+      ]);
+    }
+    return Row(children: [
+      Expanded(child: cards[0]), const SizedBox(width: 10),
+      Expanded(child: cards[1]), const SizedBox(width: 10),
+      Expanded(child: cards[2]), const SizedBox(width: 10),
+      Expanded(child: cards[3]),
     ]);
   }
 
-  Widget _buildChart(RestaurantDashboardModel d) {
+  // =====================================================================
+  // TIME SERIES CHART
+  // =====================================================================
+  Widget _buildChart(SuperAdminRestaurantDashboardModel d) {
     return MyCard(
       borderRadiusAll: 12, paddingAll: 16,
       shadow: MyShadow(elevation: 0.5, position: MyShadowPosition.bottom),
@@ -196,36 +215,27 @@ class _SellerRetailDashboardScreenState extends State<SellerRetailDashboardScree
               majorGridLines: const MajorGridLines(width: 0),
             ),
             primaryYAxis: NumericAxis(
-              name: 'orders',
-              numberFormat: NumberFormat.compact(),
-            ),
-            axes: [
-              NumericAxis(
-                name: 'revenue',
-                opposedPosition: true,
-                numberFormat: NumberFormat.compactCurrency(locale: 'vi', symbol: ''),
-                majorGridLines: const MajorGridLines(width: 0),
-              ),
-            ],
+                name: 'orders', numberFormat: NumberFormat.compact()),
+            axes: [NumericAxis(
+              name: 'revenue', opposedPosition: true,
+              numberFormat: NumberFormat.compactCurrency(locale: 'vi', symbol: ''),
+              majorGridLines: const MajorGridLines(width: 0),
+            )],
             tooltipBehavior: TooltipBehavior(enable: true),
             legend: Legend(isVisible: true, position: LegendPosition.top),
             series: [
-              ColumnSeries<OrderByTimeModel, String>(
-                name: 'Đơn hàng',
-                dataSource: d.ordersByTime,
+              ColumnSeries<SuperAdminOrderByTimeModel, String>(
+                name: 'Đơn hàng', dataSource: d.ordersByTime,
                 xValueMapper: (e, _) => e.timeBucket,
                 yValueMapper: (e, _) => e.orderCount,
-                color: _ct.primary,
-                width: 0.5,
+                color: _ct.primary, width: 0.5,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
               ),
-              LineSeries<OrderByTimeModel, String>(
-                name: 'Doanh thu',
-                dataSource: d.ordersByTime,
+              LineSeries<SuperAdminOrderByTimeModel, String>(
+                name: 'Doanh thu', dataSource: d.ordersByTime,
                 xValueMapper: (e, _) => e.timeBucket,
                 yValueMapper: (e, _) => e.revenue,
-                yAxisName: 'revenue',
-                color: Colors.green,
+                yAxisName: 'revenue', color: Colors.green,
                 markerSettings: const MarkerSettings(isVisible: true),
               ),
             ],
@@ -235,9 +245,12 @@ class _SellerRetailDashboardScreenState extends State<SellerRetailDashboardScree
     );
   }
 
-  Widget _buildPaymentPie(RestaurantDashboardModel d) {
+  // =====================================================================
+  // PAYMENT PIE CHART
+  // =====================================================================
+  Widget _buildPaymentPie(SuperAdminRestaurantDashboardModel d) {
     final methods = d.paymentBreakdown.methods;
-    final total = d.paymentBreakdown.totalAmount;
+    final total   = d.paymentBreakdown.totalAmount;
 
     return MyCard(
       borderRadiusAll: 12, paddingAll: 16,
@@ -246,36 +259,29 @@ class _SellerRetailDashboardScreenState extends State<SellerRetailDashboardScree
         _sectionTitle('Phương thức thanh toán'),
         const SizedBox(height: 12),
         if (methods.isEmpty)
-          SizedBox(
-            height: 260,
-            child: Center(child: MyText.bodyMedium('Không có dữ liệu', muted: true)),
-          )
+          SizedBox(height: 260,
+              child: Center(child: MyText.bodyMedium('Không có dữ liệu', muted: true)))
         else
           SizedBox(
             height: 260,
             child: SfCircularChart(
-              legend: Legend(
-                isVisible: true,
-                position: LegendPosition.bottom,
-                overflowMode: LegendItemOverflowMode.wrap,
-              ),
+              legend: Legend(isVisible: true, position: LegendPosition.bottom,
+                  overflowMode: LegendItemOverflowMode.wrap),
               tooltipBehavior: TooltipBehavior(enable: true),
               series: [
-                DoughnutSeries<PaymentMethodItem, String>(
+                DoughnutSeries<SuperAdminPaymentMethodItem, String>(
                   dataSource: methods,
                   xValueMapper: (m, i) => m.label,
                   yValueMapper: (m, _) => m.amount,
                   pointColorMapper: (m, i) => _paymentColor(i),
                   dataLabelMapper: (m, _) => total > 0
-                      ? '${(m.amount / total * 100).toStringAsFixed(1)}%'
-                      : '',
+                      ? '${(m.amount / total * 100).toStringAsFixed(1)}%' : '',
                   dataLabelSettings: const DataLabelSettings(
                     isVisible: true,
                     labelPosition: ChartDataLabelPosition.outside,
                     textStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
                   ),
-                  innerRadius: '55%',
-                  radius: '85%',
+                  innerRadius: '55%', radius: '85%',
                 ),
               ],
             ),
@@ -285,23 +291,15 @@ class _SellerRetailDashboardScreenState extends State<SellerRetailDashboardScree
           ...methods.asMap().entries.map((e) => Padding(
             padding: const EdgeInsets.symmetric(vertical: 3),
             child: Row(children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: _paymentColor(e.key),
-                  shape: BoxShape.circle,
-                ),
-              ),
+              Container(width: 10, height: 10,
+                  decoration: BoxDecoration(color: _paymentColor(e.key), shape: BoxShape.circle)),
               const SizedBox(width: 7),
               Expanded(child: Text(e.value.label, style: const TextStyle(fontSize: 11))),
               Text('${e.value.count} đơn',
                   style: TextStyle(fontSize: 10, color: _ct.secondary)),
               const SizedBox(width: 8),
               Text(_fmtCurrency(e.value.amount),
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
                       color: _paymentColor(e.key))),
             ]),
           )),
@@ -310,69 +308,48 @@ class _SellerRetailDashboardScreenState extends State<SellerRetailDashboardScree
     );
   }
 
-  Widget _buildRegionChart(RestaurantDashboardModel d) {
+  // =====================================================================
+  // REGION CHART
+  // =====================================================================
+  Widget _buildRegionChart(SuperAdminRestaurantDashboardModel d) {
     final regions = d.regionBreakdown;
 
-    const Map<String, List<double>> _provinceCoords = {
-      'Tuyên Quang': [22.1469, 105.2282],
-      'Cao Bằng': [22.6657, 106.2522],
-      'Lai Châu': [22.3860, 103.4711],
-      'Lào Cai': [22.3364, 104.1500],
-      'Thái Nguyên': [21.5928, 105.8442],
-      'Điện Biên': [21.3860, 103.0230],
-      'Lạng Sơn': [21.8537, 106.7615],
-      'Sơn La': [21.1022, 103.7289],
-      'Phú Thọ': [21.3450, 105.0500],
-      'Bắc Ninh': [21.1861, 106.0763],
-      'Quảng Ninh': [21.0064, 107.2925],
-      'Hà Nội': [21.0285, 105.8542],
-      'Hưng Yên': [20.6466, 106.0511],
-      'Ninh Bình': [20.2506, 105.9745],
-      'Hải Phòng': [20.8449, 106.6881],
-      'Thanh Hóa': [19.8078, 105.7764],
-      'Nghệ An': [19.2342, 104.9200],
-      'Hà Tĩnh': [18.3559, 105.8877],
-      'Quảng Trị': [16.8163, 106.6600],
-      'Huế': [16.4637, 107.5909],
-      'Đà Nẵng': [16.0544, 108.2022],
-      'Quảng Ngãi': [15.1214, 108.8040],
-      'Gia Lai': [13.9810, 108.0000],
-      'Khánh Hòa': [12.2388, 109.1967],
-      'Đắk Lắk': [12.6667, 108.0500],
-      'Lâm Đồng': [11.5753, 108.1429],
-      'Đồng Nai': [11.0686, 107.1676],
-      'Hồ Chí Minh': [10.8231, 106.6297],
-      'Tây Ninh': [11.3352, 106.1099],
-      'Đồng Tháp': [10.4938, 105.6882],
-      'Vĩnh Long': [10.2397, 105.9571],
-      'Cần Thơ': [10.0452, 105.7469],
-      'An Giang': [10.5216, 105.1259],
-      'Cà Mau': [9.1769, 105.1500],
+    const Map<String, List<double>> provinceCoords = {
+      'Tuyên Quang': [22.1469, 105.2282], 'Cao Bằng': [22.6657, 106.2522],
+      'Lai Châu': [22.3860, 103.4711],    'Lào Cai': [22.3364, 104.1500],
+      'Thái Nguyên': [21.5928, 105.8442], 'Điện Biên': [21.3860, 103.0230],
+      'Lạng Sơn': [21.8537, 106.7615],    'Sơn La': [21.1022, 103.7289],
+      'Phú Thọ': [21.3450, 105.0500],     'Bắc Ninh': [21.1861, 106.0763],
+      'Quảng Ninh': [21.0064, 107.2925],  'Hà Nội': [21.0285, 105.8542],
+      'Hưng Yên': [20.6466, 106.0511],    'Ninh Bình': [20.2506, 105.9745],
+      'Hải Phòng': [20.8449, 106.6881],   'Thanh Hóa': [19.8078, 105.7764],
+      'Nghệ An': [19.2342, 104.9200],     'Hà Tĩnh': [18.3559, 105.8877],
+      'Quảng Trị': [16.8163, 106.6600],   'Huế': [16.4637, 107.5909],
+      'Đà Nẵng': [16.0544, 108.2022],     'Quảng Ngãi': [15.1214, 108.8040],
+      'Gia Lai': [13.9810, 108.0000],     'Khánh Hòa': [12.2388, 109.1967],
+      'Đắk Lắk': [12.6667, 108.0500],    'Lâm Đồng': [11.5753, 108.1429],
+      'Đồng Nai': [11.0686, 107.1676],    'Hồ Chí Minh': [10.8231, 106.6297],
+      'Tây Ninh': [11.3352, 106.1099],    'Đồng Tháp': [10.4938, 105.6882],
+      'Vĩnh Long': [10.2397, 105.9571],   'Cần Thơ': [10.0452, 105.7469],
+      'An Giang': [10.5216, 105.1259],    'Cà Mau': [9.1769, 105.1500],
       'Phú Yên': [13.0882, 109.0929],
     };
 
-    final markers = regions.where((r) => _provinceCoords.containsKey(r.region)).toList();
+    final markers = regions.where((r) => provinceCoords.containsKey(r.region)).toList();
 
-    Color _dotColor(int count) {
+    Color dotColor(int count) {
       if (count > 100) return const Color(0xFF2563EB);
       if (count >= 51) return const Color(0xFF16A34A);
       return const Color(0xFFEA580C);
     }
 
-    final mapSource = MapShapeSource.asset(
-      'assets/data/vietnam_map.json',
-      shapeDataField: 'name',
-    );
+    final mapSource = MapShapeSource.asset('assets/data/vietnam_map.json', shapeDataField: 'name');
 
     return MyCard(
-      borderRadiusAll: 12,
-      paddingAll: 16,
+      borderRadiusAll: 12, paddingAll: 16,
       shadow: MyShadow(elevation: 0.5, position: MyShadowPosition.bottom),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          _sectionTitle('Đơn hàng theo vị trí'),
-          const Spacer(),
-        ]),
+        Row(children: [_sectionTitle('Đơn hàng theo vị trí'), const Spacer()]),
         const SizedBox(height: 8),
         SizedBox(
           height: 420,
@@ -381,110 +358,62 @@ class _SellerRetailDashboardScreenState extends State<SellerRetailDashboardScree
               MapShapeLayer(
                 source: mapSource,
                 controller: _mapController,
-                loadingBuilder: (BuildContext context) {
-                  return const Center(
-                    child: SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: CircularProgressIndicator(strokeWidth: 2.5),
-                    ),
-                  );
-                },
-                strokeColor: Colors.white,
-                strokeWidth: 0.5,
+                loadingBuilder: (context) => const Center(
+                    child: SizedBox(width: 28, height: 28,
+                        child: CircularProgressIndicator(strokeWidth: 2.5))),
+                strokeColor: Colors.white, strokeWidth: 0.5,
                 color: _ct.secondary.withOpacity(0.1),
                 initialMarkersCount: markers.length,
-                markerBuilder: (BuildContext context, int index) {
-                  final r = markers[index];
-                  final coord = _provinceCoords[r.region]!;
-                  final color = _dotColor(r.orderCount);
+                markerBuilder: (context, index) {
+                  final r     = markers[index];
+                  final coord = provinceCoords[r.region]!;
+                  final color = dotColor(r.orderCount);
                   final isActive = _activeRegion == r.region;
-
                   return MapMarker(
-                    latitude: coord[0],
-                    longitude: coord[1],
+                    latitude: coord[0], longitude: coord[1],
                     alignment: Alignment.center,
                     child: _RegionDot(
-                      color: color,
-                      isActive: isActive,
+                      color: color, isActive: isActive,
                       onTap: () {
-                        setState(() {
-                          _activeRegion = isActive ? null : r.region;
-                        });
-                        _mapController.updateMarkers(
-                            List.generate(markers.length, (i) => i));
+                        setState(() => _activeRegion = isActive ? null : r.region);
+                        _mapController.updateMarkers(List.generate(markers.length, (i) => i));
                         showDialog(
-                          context: context,
-                          barrierColor: Colors.transparent,
-                          builder: (_) => Stack(
-                            children: [
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() => _activeRegion = null);
-                                  Navigator.pop(context);
-                                },
-                                child: const SizedBox.expand(),
-                              ),
-                              Center(
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 18, vertical: 14),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(12),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: color.withOpacity(0.25),
-                                          blurRadius: 20,
-                                          offset: const Offset(0, 6),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Container(
-                                              width: 10,
-                                              height: 10,
-                                              decoration: BoxDecoration(
-                                                  shape: BoxShape.circle, color: color),
-                                            ),
-                                            const SizedBox(width: 7),
-                                            Text(
-                                              r.region,
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w700,
-                                                color: _ct.primary,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          '${r.orderCount} đơn hàng',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: color,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                          context: context, barrierColor: Colors.transparent,
+                          builder: (_) => Stack(children: [
+                            GestureDetector(
+                              onTap: () {
+                                setState(() => _activeRegion = null);
+                                Navigator.pop(context);
+                              },
+                              child: const SizedBox.expand(),
+                            ),
+                            Center(child: Material(color: Colors.transparent,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: Colors.white, borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [BoxShadow(color: color.withOpacity(0.25),
+                                      blurRadius: 20, offset: const Offset(0, 6))],
                                 ),
+                                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                                  Row(mainAxisSize: MainAxisSize.min, children: [
+                                    Container(width: 10, height: 10,
+                                        decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
+                                    const SizedBox(width: 7),
+                                    Text(r.region, style: TextStyle(fontSize: 14,
+                                        fontWeight: FontWeight.w700, color: _ct.primary)),
+                                  ]),
+                                  const SizedBox(height: 6),
+                                  Text('${r.orderCount} đơn hàng',
+                                      style: TextStyle(fontSize: 13, color: color,
+                                          fontWeight: FontWeight.w600)),
+                                ]),
                               ),
-                            ],
-                          ),
+                            )),
+                          ]),
                         ).then((_) {
                           setState(() => _activeRegion = null);
-                          _mapController.updateMarkers(
-                              List.generate(markers.length, (i) => i));
+                          _mapController.updateMarkers(List.generate(markers.length, (i) => i));
                         });
                       },
                     ),
@@ -495,50 +424,43 @@ class _SellerRetailDashboardScreenState extends State<SellerRetailDashboardScree
           ),
         ),
         const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _legendDot(const Color(0xFFEA580C), '< 50 đơn'),
-            const SizedBox(width: 16),
-            _legendDot(const Color(0xFF16A34A), '51–100 đơn'),
-            const SizedBox(width: 16),
-            _legendDot(const Color(0xFF2563EB), '> 100 đơn'),
-          ],
-        ),
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          _legendDot(const Color(0xFFEA580C), '< 50 đơn'),
+          const SizedBox(width: 16),
+          _legendDot(const Color(0xFF16A34A), '51–100 đơn'),
+          const SizedBox(width: 16),
+          _legendDot(const Color(0xFF2563EB), '> 100 đơn'),
+        ]),
       ]),
     );
   }
 
-  Widget _buildTopProducts(RestaurantDashboardModel d) {
-    return _TopTable(
-      title: 'Top sản phẩm',
-      icon: Icons.fastfood_outlined,
-      headers: const ['Sản phẩm', 'SL', 'Doanh thu'],
-      rows: d.topProducts.map((p) => [
-        p.productName,
-        _fmtNum(p.totalQuantity),
-        _fmtCurrency(p.totalRevenue),
-      ]).toList(),
-    );
-  }
+  // =====================================================================
+  // TOP TABLES
+  // =====================================================================
+  Widget _buildTopProducts(SuperAdminRestaurantDashboardModel d) => _TopTable(
+    title: 'Top sản phẩm', icon: Icons.fastfood_outlined,
+    headers: const ['Sản phẩm', 'SL', 'Doanh thu'],
+    rows: d.topProducts.map((p) => [
+      p.productName, _fmtNum(p.totalQuantity), _fmtCurrency(p.totalRevenue),
+    ]).toList(),
+  );
 
-  Widget _buildTopUsers(RestaurantDashboardModel d) {
-    return _TopTable(
-      title: 'Top nhân viên',
-      icon: Icons.badge_outlined,
-      headers: const ['Nhân viên', 'Đơn', 'Doanh thu'],
-      rows: d.topUsers.map((u) => [
-        u.fullName.isNotEmpty ? u.fullName : u.userName,
-        _fmtNum(u.orderCount),
-        _fmtCurrency(u.totalRevenue),
-      ]).toList(),
-    );
-  }
+  Widget _buildTopUsers(SuperAdminRestaurantDashboardModel d) => _TopTable(
+    title: 'Top nhân viên', icon: Icons.badge_outlined,
+    headers: const ['Nhân viên', 'Đơn', 'Doanh thu'],
+    rows: d.topUsers.map((u) => [
+      u.fullName.isNotEmpty ? u.fullName : u.userName,
+      _fmtNum(u.orderCount), _fmtCurrency(u.totalRevenue),
+    ]).toList(),
+  );
 
-  Widget _buildRecentOrders(RestaurantDashboardModel d) {
+  // =====================================================================
+  // RECENT ORDERS
+  // =====================================================================
+  Widget _buildRecentOrders(SuperAdminRestaurantDashboardModel d, {bool isNarrow = false}) {
     return MyCard(
-      borderRadiusAll: 12,
-      paddingAll: 0,
+      borderRadiusAll: 12, paddingAll: 0,
       shadow: MyShadow(elevation: 0.5, position: MyShadowPosition.bottom),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(
@@ -546,7 +468,7 @@ class _SellerRetailDashboardScreenState extends State<SellerRetailDashboardScree
           child: _sectionTitle('Đơn hàng mới nhất'),
         ),
         const Divider(height: 0),
-        _recentOrderHeader(),
+        _recentOrderHeader(isNarrow: isNarrow),
         const Divider(height: 0),
         if (d.recentOrders.isEmpty)
           Padding(
@@ -555,141 +477,116 @@ class _SellerRetailDashboardScreenState extends State<SellerRetailDashboardScree
           )
         else
           ...d.recentOrders.map((o) => Column(children: [
-            _recentOrderRow(o),
+            _recentOrderRow(o, isNarrow: isNarrow),
             Divider(height: 0, color: _ct.secondary.withOpacity(0.08)),
           ])),
       ]),
     );
   }
 
-  Widget _recentOrderHeader() {
-    const s = TextStyle(fontSize: 11, fontWeight: FontWeight.w700);
-    return Padding(
+  Widget _recentOrderHeader({bool isNarrow = false}) {
+    final s = TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _ct.secondary);
+    return Container(
+      color: _ct.secondary.withOpacity(0.06),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-      child: Row(children: [
-        Expanded(flex: 2, child: Text('Mã đơn', style: s)),
-        Expanded(flex: 2, child: Text('Khách hàng', style: s)),
-        Expanded(flex: 1, child: Text('Thời gian', style: s)),
+      child: isNarrow
+          ? Row(children: [
+        Expanded(flex: 3, child: Text('Mã đơn',     style: s)),
+        Expanded(flex: 3, child: Text('Khách hàng', style: s)),
+        Expanded(flex: 3, child: Text('Tổng tiền',  style: s)),
+        Expanded(flex: 2, child: Text('Trạng thái', style: s, textAlign: TextAlign.center)),
+      ])
+          : Row(children: [
+        Expanded(flex: 2, child: Text('Mã đơn',          style: s)),
+        Expanded(flex: 2, child: Text('Khách hàng',      style: s)),
+        Expanded(flex: 1, child: Text('Thời gian',       style: s)),
         Expanded(flex: 2, child: Text('Tổng / CK / VAT', style: s)),
         Expanded(flex: 1, child: Text('Trạng thái', style: s, textAlign: TextAlign.center)),
       ]),
     );
   }
 
-  Widget _recentOrderRow(DashboardRecentOrderModel o) {
+  Widget _recentOrderRow(SuperAdminDashboardRecentOrderModel o, {bool isNarrow = false}) {
     final color = _statusColor(o.status);
     final label = _statusLabel(o.status);
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+          color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(5)),
+      child: Text(label, textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(children: [
-        Expanded(
-          flex: 2,
-          child: Text(
-            o.orderCode,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _ct.primary),
-          ),
-        ),
-        Expanded(
-          flex: 2,
-          child: Text(
+      child: isNarrow
+          ? Row(children: [
+        Expanded(flex: 3, child: _OrderIdCell(code: o.orderCode, color: _ct.primary, fontSize: 11)),
+        Expanded(flex: 3, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(o.customerName?.isNotEmpty == true ? o.customerName! : 'Khách lẻ',
+              style: const TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis),
+          Text(_fmtDate(o.createdAt),
+              style: TextStyle(fontSize: 10, color: _ct.secondary)),
+        ])),
+        Expanded(flex: 3, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(_fmtCurrency(o.finalAmount),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _ct.primary)),
+          Text('CK: -${_fmtCurrency(o.discountAmount)}',
+              style: TextStyle(fontSize: 10, color: _ct.secondary)),
+        ])),
+        Expanded(flex: 2, child: Center(child: badge)),
+      ])
+          : Row(children: [
+        Expanded(flex: 2, child: _OrderIdCell(code: o.orderCode, color: _ct.primary, fontSize: 12)),
+        Expanded(flex: 2, child: Text(
             o.customerName?.isNotEmpty == true ? o.customerName! : 'Khách lẻ',
-            style: const TextStyle(fontSize: 12),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        Expanded(
-          flex: 1,
-          child: Text(
-            _fmtDate(o.createdAt),
-            style: TextStyle(fontSize: 11, color: _ct.secondary),
-          ),
-        ),
-        Expanded(
-          flex: 2,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _fmtCurrency(o.finalAmount),
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _ct.primary),
-              ),
-              Text(
-                'CK: -${_fmtCurrency(o.discountAmount)}  VAT: +${_fmtCurrency(o.vatAmount)}',
-                style: TextStyle(fontSize: 10, color: _ct.secondary),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          flex: 1,
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(5),
-              ),
-              child: Text(
-                label,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
-              ),
-            ),
-          ),
-        ),
+            style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+        Expanded(flex: 1, child: Text(_fmtDate(o.createdAt),
+            style: TextStyle(fontSize: 11, color: _ct.secondary))),
+        Expanded(flex: 2, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(_fmtCurrency(o.finalAmount),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _ct.primary)),
+          Text('CK: -${_fmtCurrency(o.discountAmount)}  VAT: +${_fmtCurrency(o.vatAmount)}',
+              style: TextStyle(fontSize: 10, color: _ct.secondary)),
+        ])),
+        Expanded(flex: 1, child: Center(child: badge)),
       ]),
     );
   }
 
-  Widget _sectionTitle(String t) => Text(
-    t,
-    style: TextStyle(
+  // =====================================================================
+  // HELPERS
+  // =====================================================================
+  Widget _sectionTitle(String t) => Text(t, style: TextStyle(
       fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
-      fontWeight: FontWeight.w700,
-      fontSize: 14,
-      color: _ct.primary,
-    ),
-  );
+      fontWeight: FontWeight.w700, fontSize: 14, color: _ct.primary));
 
   Color _statusColor(String s) => switch (s) {
-    'COMPLETED' => Colors.green,
-    'CANCELLED' => Colors.red,
-    'FAILED' => Colors.red,
-    'PENDING' => Colors.orange,
-    'DELIVERING' => Colors.blue,
-    _ => Colors.grey,
+    'COMPLETED'  => Colors.green, 'CANCELLED'  => Colors.red,
+    'FAILED'     => Colors.red,   'PENDING'    => Colors.orange,
+    'DELIVERING' => Colors.blue,  _            => Colors.grey,
   };
 
   String _statusLabel(String s) => switch (s) {
-    'COMPLETED' => 'Hoàn thành',
-    'CANCELLED' => 'Đã hủy',
-    'FAILED' => 'Thất bại',
-    'PENDING' => 'Chờ xử lý',
-    'CONFIRMED' => 'Xác nhận',
-    'PREPARING' => 'Đang làm',
-    'READY' => 'Sẵn sàng',
-    'DELIVERING' => 'Giao hàng',
+    'COMPLETED'  => 'Hoàn thành', 'CANCELLED'  => 'Đã hủy',
+    'FAILED'     => 'Thất bại',   'PENDING'    => 'Chờ xử lý',
+    'CONFIRMED'  => 'Xác nhận',   'PREPARING'  => 'Đang làm',
+    'READY'      => 'Sẵn sàng',   'DELIVERING' => 'Giao hàng',
     _ => s,
   };
 
-  Widget _legendDot(Color color, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-        ),
-        const SizedBox(width: 5),
-        Text(label, style: TextStyle(fontSize: 11, color: _ct.secondary)),
-      ],
-    );
-  }
+  Widget _legendDot(Color color, String label) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(width: 10, height: 10,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
+      const SizedBox(width: 5),
+      Text(label, style: TextStyle(fontSize: 11, color: _ct.secondary)),
+    ],
+  );
 }
 
 // =====================================================================
-// REUSABLE WIDGETS (_StatCard và _TopTable)
+// REUSABLE WIDGETS
 // =====================================================================
 
 class _StatCard extends StatelessWidget {
@@ -700,13 +597,9 @@ class _StatCard extends StatelessWidget {
   final bool isCurrency;
 
   const _StatCard({
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.value,
-    required this.isCurrency,
-    required this.line1,
-    required this.line2,
+    required this.icon, required this.color, required this.title,
+    required this.value, required this.isCurrency,
+    required this.line1, required this.line2,
   });
 
   String _fmt(double v) => isCurrency
@@ -716,8 +609,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MyCard(
-      borderRadiusAll: 12,
-      paddingAll: 0,
+      borderRadiusAll: 12, paddingAll: 0,
       shadow: MyShadow(elevation: 0.5, position: MyShadowPosition.bottom),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -725,35 +617,22 @@ class _StatCard extends StatelessWidget {
           Row(children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(9),
-              ),
+              decoration: BoxDecoration(color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(9)),
               child: Icon(icon, size: 20, color: color),
             ),
             const Spacer(),
-            Flexible(
-              child: Text(
-                title,
-                textAlign: TextAlign.right,
-                style: TextStyle(fontSize: 11, color: _ct.secondary, fontWeight: FontWeight.w500),
-              ),
-            ),
+            Flexible(child: Text(title, textAlign: TextAlign.right,
+                style: TextStyle(fontSize: 11, color: _ct.secondary, fontWeight: FontWeight.w500))),
           ]),
           const SizedBox(height: 12),
           TweenAnimationBuilder<double>(
             tween: Tween<double>(begin: 0, end: value.toDouble()),
             duration: const Duration(milliseconds: 1400),
             curve: Curves.easeOut,
-            builder: (_, v, __) => Text(
-              _fmt(v),
-              style: TextStyle(
+            builder: (_, v, __) => Text(_fmt(v), style: TextStyle(
                 fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: color,
-              ),
-            ),
+                fontSize: 20, fontWeight: FontWeight.w800, color: color)),
           ),
           const SizedBox(height: 6),
           Text(line1, style: TextStyle(fontSize: 11, color: _ct.secondary)),
@@ -771,181 +650,90 @@ class _TopTable extends StatelessWidget {
   final List<List<String>> rows;
 
   const _TopTable({
-    required this.title,
-    required this.icon,
-    required this.headers,
-    required this.rows,
+    required this.title, required this.icon,
+    required this.headers, required this.rows,
   });
 
-  bool _isMobile(BuildContext context) => MediaQuery.of(context).size.width < 600;
+  bool _isNarrow(BuildContext context) => MediaQuery.of(context).size.width < 600;
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = _isMobile(context);
-
+    final isNarrow = _isNarrow(context);
     return MyCard(
-      borderRadiusAll: 12,
-      paddingAll: 0,
+      borderRadiusAll: 12, paddingAll: 0,
       shadow: MyShadow(elevation: 0.5, position: MyShadowPosition.bottom),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-            child: Row(
-              children: [
-                Icon(icon, size: 15, color: _ct.primary),
-                const SizedBox(width: 6),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    color: _ct.primary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 0),
-          _tableRow(context, headers, isHeader: true, isMobile: isMobile),
-          const Divider(height: 0),
-          if (rows.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Center(
-                child: Text(
-                  'Không có dữ liệu',
-                  style: TextStyle(fontSize: 12, color: _ct.secondary),
-                ),
-              ),
-            )
-          else
-            ...rows.asMap().entries.map((e) => Column(
-              children: [
-                _tableRow(
-                  context,
-                  e.value,
-                  rank: e.key + 1,
-                  isMobile: isMobile,
-                ),
-                if (e.key < rows.length - 1)
-                  Divider(
-                    height: 0,
-                    color: _ct.secondary.withOpacity(0.07),
-                  ),
-              ],
-            )),
-        ],
-      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+          child: Row(children: [
+            Icon(icon, size: 15, color: _ct.primary),
+            const SizedBox(width: 6),
+            Text(title, style: TextStyle(
+                fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+                fontWeight: FontWeight.w700, fontSize: 13, color: _ct.primary)),
+          ]),
+        ),
+        const Divider(height: 0),
+        _tableRow(context, headers, isHeader: true, isNarrow: isNarrow),
+        const Divider(height: 0),
+        if (rows.isEmpty)
+          Padding(padding: const EdgeInsets.all(16),
+              child: Center(child: Text('Không có dữ liệu',
+                  style: TextStyle(fontSize: 12, color: _ct.secondary))))
+        else
+          ...rows.asMap().entries.map((e) => Column(children: [
+            _tableRow(context, e.value, rank: e.key + 1, isNarrow: isNarrow),
+            if (e.key < rows.length - 1)
+              Divider(height: 0, color: _ct.secondary.withOpacity(0.07)),
+          ])),
+      ]),
     );
   }
 
-  Widget _tableRow(
-      BuildContext context,
-      List<String> cells, {
-        bool isHeader = false,
-        int rank = 0,
-        required bool isMobile,
-      }) {
+  Widget _tableRow(BuildContext context, List<String> cells,
+      {bool isHeader = false, int rank = 0, required bool isNarrow}) {
     return Container(
       color: isHeader ? _ct.secondary.withOpacity(0.06) : null,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-      child: Row(
-        children: [
-          if (!isHeader)
-            Container(
-              width: 22,
-              height: 22,
-              margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                color: rank <= 3
-                    ? _ct.primary.withOpacity(0.12)
-                    : _ct.secondary.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(5),
-              ),
-              child: Center(
-                child: Text(
-                  '$rank',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: rank <= 3 ? _ct.primary : _ct.secondary,
-                  ),
-                ),
-              ),
-            )
-          else
-            const SizedBox(width: 30),
-
-          Expanded(
-            flex: 3,
-            child: Text(
-              cells[0],
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: isHeader ? 11 : 12,
-                fontWeight: isHeader ? FontWeight.w700 : FontWeight.w500,
-              ),
+      child: Row(children: [
+        if (!isHeader)
+          Container(
+            width: 22, height: 22, margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: rank <= 3 ? _ct.primary.withOpacity(0.12) : _ct.secondary.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(5),
             ),
-          ),
-
-          if (isMobile && !isHeader)
-            Expanded(
-              flex: 2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    cells[1],
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                  Text(
-                    _shortMoney(cells[2]),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: _ct.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else ...[
-            Expanded(
-              flex: 1,
-              child: Text(
-                cells[1],
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: isHeader ? 11 : 12,
-                  fontWeight: isHeader ? FontWeight.w700 : FontWeight.normal,
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                cells[2],
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  fontSize: isHeader ? 11 : 12,
+            child: Center(child: Text('$rank', style: TextStyle(
+                fontSize: 10, fontWeight: FontWeight.w700,
+                color: rank <= 3 ? _ct.primary : _ct.secondary))),
+          )
+        else
+          const SizedBox(width: 30),
+        Expanded(flex: 3, child: Text(cells[0], overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: isHeader ? 11 : 12,
+                fontWeight: isHeader ? FontWeight.w700 : FontWeight.w500))),
+        if (isNarrow && !isHeader)
+          Expanded(flex: 2, child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text(cells[1], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            Text(_shortMoney(cells[2]),
+                style: TextStyle(fontSize: 11, color: _ct.primary, fontWeight: FontWeight.w700)),
+          ]))
+        else ...[
+          Expanded(flex: 1, child: Text(cells[1], textAlign: TextAlign.center,
+              style: TextStyle(fontSize: isHeader ? 11 : 12,
+                  fontWeight: isHeader ? FontWeight.w700 : FontWeight.normal))),
+          Expanded(flex: 2, child: Text(cells[2], textAlign: TextAlign.right,
+              style: TextStyle(fontSize: isHeader ? 11 : 12,
                   fontWeight: isHeader ? FontWeight.w700 : FontWeight.w600,
-                  color: isHeader ? null : _ct.primary,
-                ),
-              ),
-            ),
-          ]
+                  color: isHeader ? null : _ct.primary))),
         ],
-      ),
+      ]),
     );
   }
 
   String _shortMoney(String value) {
     final clean = value.replaceAll('đ', '').replaceAll('.', '').replaceAll(',', '').trim();
     final number = double.tryParse(clean) ?? 0;
-
     if (number >= 1e9) return '${(number / 1e9).toStringAsFixed(2)} T';
     if (number >= 1e6) return '${(number / 1e6).toStringAsFixed(2)} Tr';
     if (number >= 1e3) return '${(number / 1e3).toStringAsFixed(0)} K';
@@ -953,16 +741,16 @@ class _TopTable extends StatelessWidget {
   }
 }
 
+// =====================================================================
+// REGION DOT
+// =====================================================================
+
 class _RegionDot extends StatefulWidget {
   final Color color;
   final bool isActive;
   final VoidCallback onTap;
 
-  const _RegionDot({
-    required this.color,
-    required this.isActive,
-    required this.onTap,
-  });
+  const _RegionDot({required this.color, required this.isActive, required this.onTap});
 
   @override
   State<_RegionDot> createState() => _RegionDotState();
@@ -978,14 +766,9 @@ class _RegionDotState extends State<_RegionDot> with SingleTickerProviderStateMi
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-    _pulse = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
-
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _pulse = Tween<double>(begin: 0.0, end: 1.0)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
     if (widget.isActive) _ctrl.repeat(reverse: true);
   }
 
@@ -1001,10 +784,7 @@ class _RegionDotState extends State<_RegionDot> with SingleTickerProviderStateMi
   }
 
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -1014,49 +794,78 @@ class _RegionDotState extends State<_RegionDot> with SingleTickerProviderStateMi
       child: AnimatedBuilder(
         animation: _pulse,
         builder: (context, _) {
-          final t = _pulse.value;
-          final dotSize = widget.isActive
-              ? _activeSize - (_activeSize - _baseSize) * 0.15 * (1 - t)
-              : _baseSize;
-          final glowBlur = widget.isActive ? 8.0 + 16.0 * t : 3.0;
+          final t          = _pulse.value;
+          final dotSize    = widget.isActive
+              ? _activeSize - (_activeSize - _baseSize) * 0.15 * (1 - t) : _baseSize;
+          final glowBlur   = widget.isActive ? 8.0 + 16.0 * t : 3.0;
           final glowSpread = widget.isActive ? 2.0 + 6.0 * t : 0.0;
-          final glowAlpha = widget.isActive ? 0.5 + 0.4 * t : 0.35;
-
-          final containerSize = dotSize + 24;
+          final glowAlpha  = widget.isActive ? 0.5 + 0.4 * t : 0.35;
 
           return SizedBox(
-            width: containerSize,
-            height: containerSize,
-            child: Center(
-              child: Container(
-                width: dotSize,
-                height: dotSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: widget.color,
-                  border: Border.all(
-                    color: Colors.white,
-                    width: widget.isActive ? 3.0 : 2.0,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: widget.color.withOpacity(glowAlpha),
-                      blurRadius: glowBlur,
-                      spreadRadius: glowSpread,
-                    ),
-                    if (widget.isActive)
-                      BoxShadow(
-                        color: widget.color.withOpacity(0.2 * t),
-                        blurRadius: glowBlur * 2.5,
-                        spreadRadius: glowSpread * 2,
-                      ),
-                  ],
-                ),
+            width: dotSize + 24, height: dotSize + 24,
+            child: Center(child: Container(
+              width: dotSize, height: dotSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle, color: widget.color,
+                border: Border.all(color: Colors.white, width: widget.isActive ? 3.0 : 2.0),
+                boxShadow: [
+                  BoxShadow(color: widget.color.withOpacity(glowAlpha),
+                      blurRadius: glowBlur, spreadRadius: glowSpread),
+                  if (widget.isActive)
+                    BoxShadow(color: widget.color.withOpacity(0.2 * t),
+                        blurRadius: glowBlur * 2.5, spreadRadius: glowSpread * 2),
+                ],
               ),
-            ),
+            )),
           );
         },
       ),
+    );
+  }
+}
+
+// =====================================================================
+// ORDER ID CELL
+// =====================================================================
+
+class _OrderIdCell extends StatelessWidget {
+  final String code;
+  final Color color;
+  final double fontSize;
+
+  const _OrderIdCell({
+    required this.code,
+    required this.color,
+    this.fontSize = 11,
+  });
+
+  List<String> _parseLines() {
+    final parts = code.split('-');
+    if (parts.isEmpty) return [code];
+    // Bỏ prefix đầu tiên (ORD, POS, ...)
+    final rest = parts.skip(1).toList();
+    if (rest.isEmpty) return [code];
+    return rest;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = _parseLines();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (int i = 0; i < lines.length; i++)
+          Text(
+            lines[i],
+            style: TextStyle(
+              fontSize: i == 0 ? fontSize : fontSize - 1,
+              fontWeight: i == 0 ? FontWeight.w700 : FontWeight.w500,
+              color: i == 0 ? color : color.withOpacity(0.70),
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+      ],
     );
   }
 }

@@ -1,5 +1,3 @@
-// lib/views/ui/components/extended_ui/pos/pos_components.dart
-
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -180,17 +178,43 @@ class _PosComponentsState extends State<PosComponents> {
 
 
   List<VariantGroupSelection> _buildQuickAddSelections(PosProductModel product) {
-    final defaultVariant = _getDefaultRegularVariant(product);
-    if (defaultVariant == null) return [];
-    return [
-      VariantGroupSelection(
-        variantId: defaultVariant.id,
-        groupName: defaultVariant.groupName,
+    final regularGroups = product.variants.where((v) => !v.isAddonGroup).toList();
+    final List<VariantGroupSelection> selections = [];
+
+    // Tự động chọn tất cả group bắt buộc (minSelect > 0)
+    for (final v in regularGroups.where((v) => v.minSelect > 0)) {
+      // Ưu tiên dùng _autoDistributeIngredients nếu full-auto, fallback _autoFillIngredients
+      final ingredients = _isFullAutoVariant(v)
+          ? _autoDistributeIngredients(v)
+          : _autoFillIngredients(v);
+
+      selections.add(VariantGroupSelection(
+        variantId: v.id,
+        groupName: v.groupName,
         isAddonGroup: false,
-        selectedIngredients: _autoDistributeIngredients(defaultVariant),
+        selectedIngredients: ingredients,
         addonItems: null,
-      ),
-    ];
+      ));
+    }
+
+    // Nếu không có group bắt buộc → fallback group đầu tiên (nếu có)
+    if (selections.isEmpty && regularGroups.isNotEmpty) {
+      final first = regularGroups.first;
+      selections.add(VariantGroupSelection(
+        variantId: first.id,
+        groupName: first.groupName,
+        isAddonGroup: false,
+        selectedIngredients: _autoFillIngredients(first),
+        addonItems: null,
+      ));
+    }
+
+    print('Quick Add selections for ${product.name}: ${selections.length} groups');
+    for (var sel in selections) {
+      print('  - ${sel.groupName} (id: ${sel.variantId}) → ${sel.selectedIngredients}');
+    }
+
+    return selections;
   }
 
   /// Trả về VariantGroupSelection rỗng (variantId=0) để modal tự auto-check
@@ -1689,6 +1713,20 @@ Map<int, int> _autoDistributeIngredients(PosVariantModel v) {
     final assign = remaining.clamp(0, maxPer);
     if (assign > 0) result[ing.ingredientId] = assign;
     remaining -= assign;
+  }
+  return result;
+}
+
+Map<int, int> _autoFillIngredients(PosVariantModel variant) {
+  if (variant.ingredients.isEmpty) return {};
+  final result = <int, int>{};
+  int remaining = variant.maxSelect;
+  for (final ing in variant.ingredients) {
+    if (remaining <= 0) break;
+    final cap = ing.maxSelectableCount ?? 1;
+    final give = remaining < cap ? remaining : cap;
+    if (give > 0) result[ing.ingredientId] = give;
+    remaining -= give;
   }
   return result;
 }

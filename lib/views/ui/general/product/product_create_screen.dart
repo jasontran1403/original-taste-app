@@ -29,6 +29,9 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
   @override
   late OutlineInputBorder outlineInputBorder;
 
+  /// Map<tierIndex, listener> để detach đúng listener khi tiers thay đổi
+  final Map<int, VoidCallback> _maxListeners = {};
+
   @override
   void initState() {
     outlineInputBorder = OutlineInputBorder(
@@ -43,29 +46,132 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
   }
 
   @override
+  void dispose() {
+    _detachAllListeners();
+    super.dispose();
+  }
+
+  // ── Sync listeners ─────────────────────────────────────────────────
+  //
+  //  Mỗi khi maxQtyController[i] thay đổi:
+  //    → minQtyController[i+1] được cập nhật cùng giá trị (read-only sync)
+  //    → controller.update() để rebuild warning banner
+  //
+  void _attachListeners() {
+    _detachAllListeners();
+    final tiers = controller.tiers;
+
+    // Đảm bảo khung đầu luôn có minQty = "0"
+    if (tiers.isNotEmpty) {
+      tiers[0].minQtyController.text = '0';
+    }
+
+    for (int i = 0; i < tiers.length - 1; i++) {
+      final currentIndex = i;
+      final nextIndex = i + 1;
+
+      void cb() {
+        final val = tiers[currentIndex].maxQtyController.text;
+        if (tiers[nextIndex].minQtyController.text != val) {
+          tiers[nextIndex].minQtyController.text = val;
+          tiers[nextIndex].minQtyController.selection =
+              TextSelection.collapsed(offset: val.length);
+        }
+        controller.update();
+      }
+
+      _maxListeners[currentIndex] = cb;
+      tiers[currentIndex].maxQtyController.addListener(cb);
+    }
+
+    // Listener trên khung cuối để cập nhật validation banner
+    if (tiers.isNotEmpty) {
+      final lastIndex = tiers.length - 1;
+      void lastCb() => controller.update();
+      _maxListeners[lastIndex] = lastCb;
+      tiers[lastIndex].maxQtyController.addListener(lastCb);
+    }
+  }
+
+  void _detachAllListeners() {
+    final tiers = controller.tiers;
+    _maxListeners.forEach((i, cb) {
+      if (i < tiers.length) {
+        tiers[i].maxQtyController.removeListener(cb);
+      }
+    });
+    _maxListeners.clear();
+  }
+
+  // ── Tier validation ────────────────────────────────────────────────
+  Map<int, String> _validateTierContinuity(List tiers) {
+    if (tiers.isEmpty) return {};
+    final errors = <int, String>{};
+
+    for (int i = 0; i < tiers.length; i++) {
+      final minRaw = (tiers[i].minQtyController as TextEditingController).text.trim();
+      final maxRaw = (tiers[i].maxQtyController as TextEditingController).text.trim();
+      final minVal = double.tryParse(minRaw);
+      final maxVal = maxRaw.isEmpty ? null : double.tryParse(maxRaw);
+
+      if (i == 0 && (minVal == null || minVal != 0)) {
+        errors[i] = 'Khung 1 phải bắt đầu từ 0';
+        continue;
+      }
+      if (minVal == null) {
+        errors[i] = 'Khung ${i + 1}: giá trị "Từ" không hợp lệ';
+        continue;
+      }
+      if (maxRaw.isNotEmpty && maxVal == null) {
+        errors[i] = 'Khung ${i + 1}: giá trị "Đến" không hợp lệ';
+        continue;
+      }
+      if (maxVal != null && maxVal <= minVal) {
+        errors[i] = 'Khung ${i + 1}: "Đến" ($maxVal) phải lớn hơn "Từ" ($minVal)';
+        continue;
+      }
+      if (i == tiers.length - 1 && maxRaw.isNotEmpty) {
+        errors[i] = 'Khung ${i + 1} là khung cuối — "Đến" phải để trống (vô cực)';
+        continue;
+      }
+      if (i < tiers.length - 1 && maxRaw.isEmpty) {
+        errors[i] = 'Khung ${i + 1}: "Đến" không được để trống vì còn khung sau';
+      }
+    }
+    return errors;
+  }
+
+  bool _hasTierErrors(List tiers) => _validateTierContinuity(tiers).isNotEmpty;
+
+  @override
   Widget build(BuildContext context) {
     return GetBuilder<ProductCreateController>(
       init: controller,
-      builder: (c) => Layout(
-        screenName: 'TẠO SẢN PHẨM',
-        child: Form(
-          key: c.formKey,
-          child: SingleChildScrollView(
-            child: Column(children: [
-              _buildImageSection(c),
-              MySpacing.height(20),
-              _buildBasicInfo(c),
-              MySpacing.height(20),
-              _buildIngredientSection(c),
-              MySpacing.height(20),
-              _buildPriceSection(c),
-              MySpacing.height(20),
-              _buildActionBar(c),
-              MySpacing.height(32),
-            ]),
+      builder: (c) {
+        // Gắn lại listener sau mỗi rebuild (thêm/xóa tier)
+        WidgetsBinding.instance.addPostFrameCallback((_) => _attachListeners());
+
+        return Layout(
+          screenName: 'TẠO SẢN PHẨM',
+          child: Form(
+            key: c.formKey,
+            child: SingleChildScrollView(
+              child: Column(children: [
+                _buildImageSection(c),
+                MySpacing.height(20),
+                _buildBasicInfo(c),
+                MySpacing.height(20),
+                _buildIngredientSection(c),
+                MySpacing.height(20),
+                _buildPriceSection(c),
+                MySpacing.height(20),
+                _buildActionBar(c),
+                MySpacing.height(32),
+              ]),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -81,17 +187,13 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
           child: Row(children: [
             MyContainer.bordered(
               onTap: () => Get.back(),
-              color: Colors.white.withOpacity(0.9), // trắng đục
-              borderRadiusAll: 12, // bo tròn
+              color: Colors.white.withOpacity(0.9),
+              borderRadiusAll: 12,
               padding: MySpacing.xy(16, 10),
-              borderColor: Colors.grey.shade300, // border xám nhẹ
-              child: MyText.bodyMedium(
-                'Quay lại',
-                color: Colors.black87,
-                // Không fontWeight → text normal
-              ),
+              borderColor: Colors.grey.shade300,
+              child: MyText.bodyMedium('Quay lại', color: Colors.black87),
             ),
-            MySpacing.width(16), // khoảng cách giữa nút và tiêu đề
+            MySpacing.width(16),
             MyText.titleMedium('Ảnh sản phẩm',
                 style: TextStyle(
                     fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
@@ -99,8 +201,7 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
             if (c.isUploading) ...[
               MySpacing.width(12),
               SizedBox(
-                  height: 16,
-                  width: 16,
+                  height: 16, width: 16,
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: contentTheme.primary)),
               MySpacing.width(6),
@@ -111,17 +212,65 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
         const Divider(height: 0),
         Padding(
           padding: MySpacing.all(20),
-          child: GestureDetector(
-            onTap: c.isUploading ? null : c.pickFiles,
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                border: Border.all(
-                    color: contentTheme.secondary.withValues(alpha: 0.3)),
-                borderRadius: BorderRadius.circular(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: c.isUploading ? null : c.pickFiles,
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                        color: c.uploadError != null
+                            ? contentTheme.danger.withValues(alpha: 0.6)
+                            : contentTheme.secondary.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: _buildImageContent(c),
+                ),
               ),
-              child: _buildImageContent(c),
-            ),
+              // ── Error banner ────────────────────────────────────────
+              if (c.uploadError != null) ...[
+                MySpacing.height(10),
+                Container(
+                  width: double.infinity,
+                  padding: MySpacing.all(12),
+                  decoration: BoxDecoration(
+                    color: contentTheme.danger.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: contentTheme.danger.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.error_outline,
+                          size: 16, color: contentTheme.danger),
+                      MySpacing.width(8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            MyText.bodySmall('Upload thất bại',
+                                color: contentTheme.danger, fontWeight: 700),
+                            MySpacing.height(2),
+                            MyText.bodySmall(c.uploadError!,
+                                color: contentTheme.danger),
+                            MySpacing.height(6),
+                            GestureDetector(
+                              onTap: c.clearImage,
+                              child: MyText.bodySmall('Xóa và chọn lại ảnh',
+                                  color: contentTheme.primary,
+                                  fontWeight: 600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ]),
@@ -133,6 +282,19 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
       return const Padding(
           padding: EdgeInsets.all(40),
           child: Center(child: CircularProgressIndicator()));
+    }
+    if (c.uploadError != null) {
+      // Hiển thị icon lỗi trong box để user biết cần chọn lại
+      return Padding(
+        padding: MySpacing.xy(0, 28),
+        child: Column(children: [
+          Icon(Icons.broken_image_outlined,
+              size: 48, color: contentTheme.danger.withValues(alpha: 0.6)),
+          MySpacing.height(10),
+          MyText.bodyMedium('Ảnh không hợp lệ — nhấn để chọn lại',
+              color: contentTheme.danger),
+        ]),
+      );
     }
     if (c.uploadedImageUrl != null) {
       return Stack(children: [
@@ -168,8 +330,7 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
       Icon(Icons.add_photo_alternate_outlined,
           size: 48, color: contentTheme.primary.withValues(alpha: 0.6)),
       MySpacing.height(10),
-      MyText.bodyMedium('Nhấn vào đây để chọn ảnh',
-          color: contentTheme.primary),
+      MyText.bodyMedium('Nhấn vào đây để chọn ảnh', color: contentTheme.primary),
       MySpacing.height(4),
       MyText.bodySmall('PNG, JPG, WEBP — khuyến nghị 200×200', muted: true),
     ]),
@@ -186,95 +347,80 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
         const Divider(height: 0),
         Padding(
           padding: MySpacing.all(20),
-          child: MyFlex(
-            contentPadding: false,
-            children: [
-              MyFlexItem(
-                child: _field('Tên sản phẩm *',
-                  TextFormField(
-                    controller: c.nameController,
-                    style: MyTextStyle.bodyMedium(),
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Vui lòng nhập tên' : null,
-                    decoration: _inputDeco('Nhập tên sản phẩm...'),
-                  ),
+          child: MyFlex(contentPadding: false, children: [
+            MyFlexItem(
+              child: _field('Tên sản phẩm *',
+                TextFormField(
+                  controller: c.nameController,
+                  style: MyTextStyle.bodyMedium(),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Vui lòng nhập tên' : null,
+                  decoration: _inputDeco('Nhập tên sản phẩm...'),
                 ),
               ),
-              MyFlexItem(
-                sizes: 'lg-4',
-                child: _field('Danh mục',
-                  c.isLoadingData
-                      ? const LinearProgressIndicator()
-                      : DropdownButtonFormField<CategoryModel>(
-                    dropdownColor: contentTheme.light,
-                    decoration: _inputDeco('Chọn danh mục'),
-                    value: c.selectedCategory,
-                    onChanged: (v) {
-                      c.selectedCategory = v;
-                      c.update();
-                    },
-                    items: c.categories
-                        .map((cat) => DropdownMenuItem(
-                      value: cat,
-                      child: MyText.bodyMedium(cat.name),
-                    ))
-                        .toList(),
-                  ),
+            ),
+            MyFlexItem(
+              sizes: 'lg-4',
+              child: _field('Danh mục',
+                c.isLoadingData
+                    ? const LinearProgressIndicator()
+                    : DropdownButtonFormField<CategoryModel>(
+                  dropdownColor: contentTheme.light,
+                  decoration: _inputDeco('Chọn danh mục'),
+                  value: c.selectedCategory,
+                  onChanged: (v) { c.selectedCategory = v; c.update(); },
+                  items: c.categories.map((cat) => DropdownMenuItem(
+                    value: cat, child: MyText.bodyMedium(cat.name),
+                  )).toList(),
                 ),
               ),
-              MyFlexItem(
-                sizes: 'lg-4',
-                child: _field('Đơn vị',
-                  Container(
-                    padding: MySpacing.all(14),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                          color: contentTheme.secondary.withValues(alpha: 0.4)),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(children: [
-                      Icon(Icons.scale_outlined,
-                          size: 18, color: contentTheme.secondary),
-                      MySpacing.width(8),
-                      MyText.bodyMedium('kg', fontWeight: 600),
-                      MySpacing.width(6),
-                      MyText.bodySmall('(cố định)', muted: true),
-                    ]),
+            ),
+            MyFlexItem(
+              sizes: 'lg-4',
+              child: _field('Đơn vị',
+                Container(
+                  padding: MySpacing.all(14),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                        color: contentTheme.secondary.withValues(alpha: 0.4)),
+                    borderRadius: BorderRadius.circular(8),
                   ),
+                  child: Row(children: [
+                    Icon(Icons.scale_outlined,
+                        size: 18, color: contentTheme.secondary),
+                    MySpacing.width(8),
+                    MyText.bodyMedium('kg', fontWeight: 600),
+                    MySpacing.width(6),
+                    MyText.bodySmall('(cố định)', muted: true),
+                  ]),
                 ),
               ),
-              MyFlexItem(
-                sizes: 'lg-4',
-                child: _field('Thuế VAT',
-                  DropdownButtonFormField<int>(
-                    dropdownColor: contentTheme.light,
-                    decoration: _inputDeco('Chọn VAT'),
-                    value: c.selectedVatRate,
-                    onChanged: (v) {
-                      c.selectedVatRate = v ?? 0;
-                      c.update();
-                    },
-                    items: c.vatRateOptions
-                        .map((r) => DropdownMenuItem(
-                      value: r,
-                      child: MyText.bodyMedium('$r%'),
-                    ))
-                        .toList(),
-                  ),
+            ),
+            MyFlexItem(
+              sizes: 'lg-4',
+              child: _field('Thuế VAT',
+                DropdownButtonFormField<int>(
+                  dropdownColor: contentTheme.light,
+                  decoration: _inputDeco('Chọn VAT'),
+                  value: c.selectedVatRate,
+                  onChanged: (v) { c.selectedVatRate = v ?? 0; c.update(); },
+                  items: c.vatRateOptions.map((r) => DropdownMenuItem(
+                    value: r, child: MyText.bodyMedium('$r%'),
+                  )).toList(),
                 ),
               ),
-              MyFlexItem(
-                child: _field('Mô tả (tuỳ chọn)',
-                  TextFormField(
-                    controller: c.descriptionController,
-                    maxLines: 3,
-                    style: MyTextStyle.bodyMedium(),
-                    decoration: _inputDeco('Mô tả ngắn về sản phẩm...'),
-                  ),
+            ),
+            MyFlexItem(
+              child: _field('Mô tả (tuỳ chọn)',
+                TextFormField(
+                  controller: c.descriptionController,
+                  maxLines: 3,
+                  style: MyTextStyle.bodyMedium(),
+                  decoration: _inputDeco('Mô tả ngắn về sản phẩm...'),
                 ),
               ),
-            ],
-          ),
+            ),
+          ]),
         ),
       ]),
     );
@@ -319,24 +465,18 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
               decoration: _inputDeco('Chọn nguyên liệu...'),
               value: c.selectedIngredient,
               isExpanded: true,
-              onChanged: (v) {
-                c.selectedIngredient = v;
-                c.update();
-              },
-              items: c.ingredientOptions
-                  .map((ing) => DropdownMenuItem(
+              onChanged: (v) { c.selectedIngredient = v; c.update(); },
+              items: c.ingredientOptions.map((ing) => DropdownMenuItem(
                 value: ing,
                 child: Row(children: [
-                  Flexible(
-                      child: MyText.bodyMedium(ing.name,
-                          overflow: TextOverflow.ellipsis)),
+                  Flexible(child: MyText.bodyMedium(ing.name,
+                      overflow: TextOverflow.ellipsis)),
                   MySpacing.width(8),
                   MyText.bodySmall(
                       '(tồn: ${ing.stockQuantity.toStringAsFixed(2)} ${ing.unit})',
                       muted: true),
                 ]),
-              ))
-                  .toList(),
+              )).toList(),
             ),
             if (c.selectedIngredient != null) ...[
               MySpacing.height(12),
@@ -351,9 +491,10 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
                   MySpacing.width(8),
                   Expanded(
                     child: MyText.bodySmall(
-                      '${c.selectedIngredient!.name} '
-                          '— Tồn kho: ${c.selectedIngredient!.stockQuantity.toStringAsFixed(2)} ${c.selectedIngredient!.unit}. '
-                          'Mỗi đơn vị sản phẩm bán ra sẽ trừ 1 ${c.selectedIngredient!.unit} nguyên liệu.',
+                      '${c.selectedIngredient!.name} — Tồn kho: '
+                          '${c.selectedIngredient!.stockQuantity.toStringAsFixed(2)} '
+                          '${c.selectedIngredient!.unit}. Mỗi đơn vị sản phẩm bán ra '
+                          'sẽ trừ 1 ${c.selectedIngredient!.unit} nguyên liệu.',
                       color: contentTheme.primary,
                     ),
                   ),
@@ -368,6 +509,10 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
 
   // ── 4. Giá ────────────────────────────────────────────────────────
   Widget _buildPriceSection(ProductCreateController c) {
+    final tierErrors = c.tiers.isNotEmpty
+        ? _validateTierContinuity(c.tiers)
+        : <int, String>{};
+
     return MyCard(
       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
       borderRadiusAll: 12,
@@ -377,191 +522,273 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
         const Divider(height: 0),
         Padding(
           padding: MySpacing.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-              // ── Giá gốc ──────────────────────────────────────────
-              _field('Giá gốc (lẻ) *',
-                TextFormField(
-                  controller: c.basePriceController,
-                  keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-                  ],
-                  style: MyTextStyle.bodyMedium(),
-                  decoration: _inputDeco('Giá gốc (đ)').copyWith(
-                    prefixIcon: Icon(Icons.attach_money,
-                        size: 18, color: contentTheme.secondary),
-                    prefixIconConstraints:
-                    const BoxConstraints(minWidth: 38, maxWidth: 38),
-                    helperText: 'Áp dụng khi không có khung giá phù hợp',
-                    helperStyle: MyTextStyle.bodySmall(
-                        xMuted: true),
+            // ── Giá gốc ─────────────────────────────────────────────
+            _field('Giá gốc (lẻ) *',
+              TextFormField(
+                controller: c.basePriceController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                ],
+                style: MyTextStyle.bodyMedium(),
+                decoration: _inputDeco('Giá gốc (đ)').copyWith(
+                  prefixIcon: Icon(Icons.attach_money,
+                      size: 18, color: contentTheme.secondary),
+                  prefixIconConstraints:
+                  const BoxConstraints(minWidth: 38, maxWidth: 38),
+                  helperText: 'Áp dụng khi không có khung giá phù hợp',
+                  helperStyle: MyTextStyle.bodySmall(xMuted: true),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Bắt buộc';
+                  if (double.tryParse(v.trim()) == null) return 'Số không hợp lệ';
+                  return null;
+                },
+              ),
+            ),
+
+            MySpacing.height(24),
+
+            // ── Khung giá sỉ ────────────────────────────────────────
+            Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  MyText.titleSmall('Khung giá sỉ',
+                      style: TextStyle(
+                          fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+                          fontWeight: FontWeight.w600)),
+                  MyText.bodySmall('Giá tự động áp dụng theo số lượng đặt',
+                      muted: true),
+                ]),
+              ),
+              GestureDetector(
+                onTap: c.addTier,
+                child: Container(
+                  padding: MySpacing.xy(12, 8),
+                  decoration: BoxDecoration(
+                    color: contentTheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Bắt buộc';
-                    if (double.tryParse(v.trim()) == null) return 'Số không hợp lệ';
-                    return null;
-                  },
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.add, size: 16, color: contentTheme.primary),
+                    MySpacing.width(4),
+                    MyText.bodySmall('Thêm khung',
+                        color: contentTheme.primary, fontWeight: 600),
+                  ]),
                 ),
               ),
+            ]),
 
-              MySpacing.height(24),
-
-              // ── Khung giá sỉ ─────────────────────────────────────
-              Row(children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyText.titleSmall('Khung giá sỉ',
-                          style: TextStyle(
-                              fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
-                              fontWeight: FontWeight.w600)),
-                      MyText.bodySmall(
-                          'Giá tự động áp dụng theo số lượng đặt',
-                          muted: true),
-                    ],
-                  ),
+            if (c.tiers.isEmpty) ...[
+              MySpacing.height(12),
+              Container(
+                width: double.infinity,
+                padding: MySpacing.xy(16, 14),
+                decoration: BoxDecoration(
+                  color: contentTheme.secondary.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: contentTheme.secondary.withValues(alpha: 0.15)),
                 ),
-                GestureDetector(
-                  onTap: c.addTier,
-                  child: Container(
-                    padding: MySpacing.xy(12, 8),
-                    decoration: BoxDecoration(
-                      color: contentTheme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.add, size: 16, color: contentTheme.primary),
-                      MySpacing.width(4),
-                      MyText.bodySmall('Thêm khung',
-                          color: contentTheme.primary, fontWeight: 600),
-                    ]),
-                  ),
-                ),
-              ]),
-
-              if (c.tiers.isEmpty) ...[
-                MySpacing.height(12),
-                Container(
-                  width: double.infinity,
-                  padding: MySpacing.xy(16, 14),
-                  decoration: BoxDecoration(
-                    color: contentTheme.secondary.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: contentTheme.secondary.withValues(alpha: 0.15),
-                        style: BorderStyle.solid),
-                  ),
-                  child: Row(children: [
-                    Icon(Icons.info_outline,
-                        size: 16,
-                        color: contentTheme.secondary.withValues(alpha: 0.5)),
-                    MySpacing.width(8),
-                    MyText.bodySmall(
-                        'Không có khung giá — dùng giá gốc cho tất cả đơn',
-                        muted: true),
-                  ]),
-                ),
-              ] else ...[
-                MySpacing.height(12),
-                // Header labels
-                Padding(
-                  padding: MySpacing.bottom(6),
-                  child: Row(children: [
-                    const SizedBox(width: 32),
-                    Expanded(flex: 3, child: MyText.bodySmall('Tên khung', muted: true)),
-                    MySpacing.width(8),
-                    Expanded(flex: 2, child: MyText.bodySmall('Từ (SL)', muted: true)),
-                    MySpacing.width(8),
-                    Expanded(flex: 2, child: MyText.bodySmall('Đến (SL)', muted: true)),
-                    MySpacing.width(8),
-                    Expanded(flex: 2, child: MyText.bodySmall('Giá (đ)', muted: true)),
-                    const SizedBox(width: 36),
-                  ]),
-                ),
-                ...List.generate(c.tiers.length, (i) => _buildTierRow(c, i)),
-                MySpacing.height(6),
-                MyText.bodySmall(
-                    '* "Đến" để trống = không giới hạn trên',
-                    muted: true),
+                child: Row(children: [
+                  Icon(Icons.info_outline,
+                      size: 16,
+                      color: contentTheme.secondary.withValues(alpha: 0.5)),
+                  MySpacing.width(8),
+                  MyText.bodySmall(
+                      'Không có khung giá — dùng giá gốc cho tất cả đơn',
+                      muted: true),
+                ]),
+              ),
+            ] else ...[
+              MySpacing.height(12),
+              // Header
+              Padding(
+                padding: MySpacing.bottom(6),
+                child: Row(children: [
+                  const SizedBox(width: 80),
+                  MySpacing.width(8),
+                  Expanded(flex: 2, child: MyText.bodySmall('Từ (SL)', muted: true)),
+                  MySpacing.width(8),
+                  Expanded(flex: 2, child: MyText.bodySmall('Đến (SL)', muted: true)),
+                  MySpacing.width(8),
+                  Expanded(flex: 2, child: MyText.bodySmall('Giá (đ)', muted: true)),
+                  const SizedBox(width: 36),
+                ]),
+              ),
+              ...List.generate(c.tiers.length, (i) => _buildTierRow(
+                c, i,
+                hasError: tierErrors.containsKey(i),
+              )),
+              MySpacing.height(4),
+              MyText.bodySmall('* "Đến" để trống = không giới hạn trên',
+                  muted: true),
+              if (tierErrors.isNotEmpty) ...[
+                MySpacing.height(10),
+                _buildTierErrorBanner(tierErrors),
               ],
             ],
-          ),
+          ]),
         ),
       ]),
     );
   }
 
-  Widget _buildTierRow(ProductCreateController c, int index) {
+  // ── Warning banner ─────────────────────────────────────────────────
+  Widget _buildTierErrorBanner(Map<int, String> errors) {
+    return Container(
+      width: double.infinity,
+      padding: MySpacing.all(14),
+      decoration: BoxDecoration(
+        color: contentTheme.danger.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: contentTheme.danger.withValues(alpha: 0.3)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.warning_amber_rounded, size: 16, color: contentTheme.danger),
+          MySpacing.width(6),
+          MyText.bodySmall('Các khung giá phải nối tiếp nhau',
+              color: contentTheme.danger, fontWeight: 700),
+        ]),
+        MySpacing.height(6),
+        ...errors.entries.map((e) => Padding(
+          padding: const EdgeInsets.only(top: 3),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            MyText.bodySmall('• ', color: contentTheme.danger),
+            Expanded(
+                child: MyText.bodySmall(e.value, color: contentTheme.danger)),
+          ]),
+        )),
+      ]),
+    );
+  }
+
+  // ── Tier row ──────────────────────────────────────────────────────
+  //
+  //  Ô "Từ" luôn read-only:
+  //    - Khung 1: cố định "0"
+  //    - Khung 2+: bằng "Đến" của khung trước (tự động sync qua listener)
+  //
+  //  Ô "Đến" có thể nhập tự do — listener sẽ đẩy giá trị xuống "Từ" khung sau
+  //
+  Widget _buildTierRow(
+      ProductCreateController c,
+      int index, {
+        bool hasError = false,
+      }) {
     final tier = c.tiers[index];
+    final tierName = 'Khung ${index + 1}';
+
+    final errorBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: contentTheme.danger.withValues(alpha: 0.8)),
+    );
+    final lockedBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(
+          color: contentTheme.secondary.withValues(alpha: 0.2)),
+    );
+
+    // Decoration cho ô "Từ" — luôn locked
+    final decoMin = (hasError
+        ? _inputDeco('0').copyWith(
+      border: errorBorder,
+      focusedBorder: errorBorder,
+      enabledBorder: errorBorder,
+      disabledBorder: errorBorder,
+    )
+        : _inputDeco('0').copyWith(
+      border: lockedBorder,
+      focusedBorder: lockedBorder,
+      enabledBorder: lockedBorder,
+      disabledBorder: lockedBorder,
+      filled: true,
+      fillColor: contentTheme.secondary.withValues(alpha: 0.06),
+    ))
+        .copyWith(
+      suffixIcon: Icon(Icons.lock_outline,
+          size: 13,
+          color: contentTheme.secondary.withValues(alpha: 0.45)),
+      suffixIconConstraints:
+      const BoxConstraints(minWidth: 28, maxWidth: 28),
+    );
+
+    // Decoration cho ô "Đến"
+    final decoMax = hasError
+        ? _inputDeco('∞').copyWith(
+      border: errorBorder,
+      focusedBorder: errorBorder,
+      enabledBorder: errorBorder,
+    )
+        : _inputDeco('∞');
+
     return Padding(
       padding: MySpacing.bottom(10),
       child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        // Index badge
+
+        // ── Badge tên khung ────────────────────────────────────────
         Container(
-          width: 24,
-          height: 24,
+          width: 80,
+          padding: MySpacing.xy(10, 8),
           decoration: BoxDecoration(
-            color: contentTheme.primary.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(6),
+            color: hasError
+                ? contentTheme.danger.withValues(alpha: 0.08)
+                : contentTheme.primary.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+                color: hasError
+                    ? contentTheme.danger.withValues(alpha: 0.35)
+                    : contentTheme.primary.withValues(alpha: 0.20)),
           ),
-          child: Center(
-            child: MyText.bodySmall('${index + 1}',
-                color: contentTheme.primary, fontWeight: 700),
+          child: Text(tierName,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: hasError ? contentTheme.danger : contentTheme.primary,
+            ),
           ),
         ),
         MySpacing.width(8),
-        // Tên khung
-        Expanded(
-          flex: 3,
-          child: TextFormField(
-            controller: tier.nameController,
-            style: MyTextStyle.bodyMedium(),
-            decoration: _inputDeco('Tên khung'),
-          ),
-        ),
-        MySpacing.width(8),
-        // Từ
+
+        // ── Từ — read-only, sync từ Đến của khung trước ───────────
         Expanded(
           flex: 2,
           child: TextFormField(
             controller: tier.minQtyController,
-            keyboardType:
-            const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-            ],
-            style: MyTextStyle.bodyMedium(),
-            decoration: _inputDeco('0'),
+            readOnly: true,
+            enableInteractiveSelection: false,
+            style: MyTextStyle.bodyMedium(
+                color: contentTheme.secondary.withValues(alpha: 0.65)),
+            decoration: decoMin,
           ),
         ),
         MySpacing.width(8),
-        // Đến
+
+        // ── Đến — có thể nhập, tự push xuống Từ của khung sau ─────
         Expanded(
           flex: 2,
           child: TextFormField(
             controller: tier.maxQtyController,
-            keyboardType:
-            const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
             ],
             style: MyTextStyle.bodyMedium(),
-            decoration: _inputDeco('∞'),
+            decoration: decoMax,
           ),
         ),
         MySpacing.width(8),
-        // Giá
+
+        // ── Giá ────────────────────────────────────────────────────
         Expanded(
           flex: 2,
           child: TextFormField(
             controller: tier.priceController,
-            keyboardType:
-            const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,0}')),
             ],
@@ -570,7 +797,8 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
           ),
         ),
         MySpacing.width(8),
-        // Xóa
+
+        // ── Xóa ────────────────────────────────────────────────────
         GestureDetector(
           onTap: () => c.removeTier(index),
           child: Container(
@@ -588,39 +816,68 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> with UIMixin 
 
   // ── 5. Action bar ─────────────────────────────────────────────────
   Widget _buildActionBar(ProductCreateController c) {
+    final hasTierErr = c.tiers.isNotEmpty && _hasTierErrors(c.tiers);
+    final hasUploadErr = c.uploadError != null;
+    final isBlocked = hasTierErr || hasUploadErr;
+
     return Container(
       padding: MySpacing.all(20),
       decoration: BoxDecoration(
         color: contentTheme.light,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-        MyContainer.bordered(
-          onTap: () => Get.back(),
-          color: Colors.transparent,
-          borderRadiusAll: 12,
-          padding: MySpacing.xy(24, 10),
-          borderColor: contentTheme.dark,
-          child: MyText.bodyMedium('Hủy'),
-        ),
-        MySpacing.width(12),
-        MyContainer(
-          onTap: c.isSaving ? null : c.save,
-          color: contentTheme.primary,
-          borderRadiusAll: 12,
-          padding: MySpacing.xy(24, 12),
-          child: c.isSaving
-              ? SizedBox(
-              height: 18, width: 18,
-              child: CircularProgressIndicator(
-                  strokeWidth: 2, color: contentTheme.onPrimary))
-              : MyText.bodyMedium('Lưu sản phẩm',
-              fontWeight: 600, color: contentTheme.onPrimary),
-        ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        if (hasTierErr) ...[
+          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            Icon(Icons.error_outline, size: 14, color: contentTheme.danger),
+            MySpacing.width(6),
+            MyText.bodySmall('Khung giá chưa hợp lệ — vui lòng kiểm tra lại',
+                color: contentTheme.danger),
+          ]),
+          MySpacing.height(10),
+        ],
+        if (hasUploadErr) ...[
+          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            Icon(Icons.image_not_supported_outlined,
+                size: 14, color: contentTheme.danger),
+            MySpacing.width(6),
+            MyText.bodySmall('Ảnh upload lỗi — vui lòng xóa và chọn lại',
+                color: contentTheme.danger),
+          ]),
+          MySpacing.height(10),
+        ],
+        Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+          MyContainer.bordered(
+            onTap: () => Get.back(),
+            color: Colors.transparent,
+            borderRadiusAll: 12,
+            padding: MySpacing.xy(24, 10),
+            borderColor: contentTheme.dark,
+            child: MyText.bodyMedium('Hủy'),
+          ),
+          MySpacing.width(12),
+          Opacity(
+            opacity: isBlocked ? 0.45 : 1.0,
+            child: MyContainer(
+              onTap: (c.isSaving || isBlocked) ? null : c.save,
+              color: contentTheme.primary,
+              borderRadiusAll: 12,
+              padding: MySpacing.xy(24, 12),
+              child: c.isSaving
+                  ? SizedBox(
+                  height: 18, width: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: contentTheme.onPrimary))
+                  : MyText.bodyMedium('Lưu sản phẩm',
+                  fontWeight: 600, color: contentTheme.onPrimary),
+            ),
+          ),
+        ]),
       ]),
     );
   }
 
+  // ── Helpers ───────────────────────────────────────────────────────
   Widget _field(String label, Widget child) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [

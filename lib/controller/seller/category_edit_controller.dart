@@ -1,4 +1,6 @@
 // controller/seller/category_edit_controller.dart
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -13,11 +15,18 @@ class CategoryEditController extends GetxController {
   CategoryModel? category;
 
   List<PlatformFile> files = [];
+  Uint8List? previewBytes;       // ← preview ảnh mới chọn (như create)
   String? currentImageUrl;
   String? uploadedImageUrl;
   bool isUploading = false;
   bool isSaving = false;
   bool isLoading = false;
+
+  // ── Upload error — block nút Lưu ────────────────────────────────
+  String? uploadError;
+  bool get hasUploadError => uploadError != null;
+
+  String? get activeImageUrl => uploadedImageUrl ?? currentImageUrl;
 
   @override
   void onInit() {
@@ -41,6 +50,7 @@ class CategoryEditController extends GetxController {
   }
 
   Future<void> _fetchCategory() async {
+    print("Loaded category");
     isLoading = true;
     update();
     final result = await SellerService.getCategoryById(categoryId);
@@ -57,34 +67,50 @@ class CategoryEditController extends GetxController {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       allowMultiple: false,
+      withData: true,           // ← cần để lấy bytes cho preview
     );
     if (result != null && result.files.isNotEmpty) {
+      final file = result.files.first;
       files = result.files;
+      previewBytes = file.bytes; // ← set preview ngay lập tức
+      uploadedImageUrl = null;
+      uploadError = null;
       update();
-      await _uploadImage(result.files.first);
+      await _uploadImage(file);
     }
   }
 
   Future<void> _uploadImage(PlatformFile file) async {
     if (file.path == null) return;
     isUploading = true;
+    uploadError = null;
     update();
 
     final result = await SellerService.uploadCategoryImage(file.path!);
+
+    isUploading = false;
+
     if (result.isSuccess && result.data != null) {
       uploadedImageUrl = result.data;
+      uploadError = null;
     } else {
-      Get.snackbar('Lỗi upload', result.message,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.TOP,
-          forwardAnimationCurve: Curves.easeOutBack);
+      uploadedImageUrl = null;
+      uploadError = result.message?.isNotEmpty == true
+          ? result.message!
+          : 'Upload thất bại. Vui lòng thử lại.';
     }
-    isUploading = false;
+
     update();
   }
 
-  String? get activeImageUrl => uploadedImageUrl ?? currentImageUrl;
+  // Xóa ảnh mới chọn → quay lại ảnh hiện tại
+  void clearNewImage() {
+    files = [];
+    previewBytes = null;
+    uploadedImageUrl = null;
+    uploadError = null;
+    update();
+  }
 
   Future<bool> save() async {
     if (!formKey.currentState!.validate()) return false;
@@ -111,8 +137,7 @@ class CategoryEditController extends GetxController {
 
     if (result.isSuccess) {
       Get.snackbar(
-        'Thành công',
-        'Đã cập nhật danh mục',
+        'Thành công', 'Đã cập nhật danh mục',
         backgroundColor: Colors.green,
         colorText: Colors.white,
         snackPosition: SnackPosition.TOP,
@@ -125,8 +150,7 @@ class CategoryEditController extends GetxController {
       return true;
     } else {
       Get.snackbar(
-        'Lỗi',
-        result.message ?? 'Không thể cập nhật danh mục',
+        'Lỗi', result.message ?? 'Không thể cập nhật danh mục',
         backgroundColor: Colors.red,
         colorText: Colors.white,
         snackPosition: SnackPosition.TOP,

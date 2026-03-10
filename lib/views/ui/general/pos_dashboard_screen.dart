@@ -138,22 +138,32 @@ class _PosDashboardScreenState extends State<PosDashboardScreen> {
         controller: _scrollCtrl,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
-        child: Column(children: [
-          _buildCards(d, animKey: c.posAnimationKey),
-          const SizedBox(height: 14),
-          IntrinsicHeight(
-            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Expanded(flex: 3, child: _buildChart(d)),
-              const SizedBox(width: 12),
-              Expanded(flex: 2, child: _PieCard(data: d)),
-            ]),
-          ),
-          const SizedBox(height: 14),
-          _buildTopProducts(d),
-          const SizedBox(height: 14),
-          _buildRecentOrders(d),
-          const SizedBox(height: 16),
-        ]),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 600;
+            return Column(children: [
+              _buildCards(d, animKey: c.posAnimationKey, isNarrow: isNarrow),
+              const SizedBox(height: 14),
+              if (isNarrow) ...[
+                _buildChart(d),
+                const SizedBox(height: 14),
+                _PieCard(data: d),
+              ] else
+                IntrinsicHeight(
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Expanded(flex: 3, child: _buildChart(d)),
+                    const SizedBox(width: 12),
+                    Expanded(flex: 2, child: _PieCard(data: d)),
+                  ]),
+                ),
+              const SizedBox(height: 14),
+              _buildTopProducts(d),
+              const SizedBox(height: 14),
+              _buildRecentOrders(d, isNarrow: isNarrow),
+              const SizedBox(height: 16),
+            ]);
+          },
+        ),
       ),
     );
   }
@@ -163,41 +173,66 @@ class _PosDashboardScreenState extends State<PosDashboardScreen> {
   // ValueKey(animKey) → Flutter tạo lại widget → TweenAnimationBuilder restart
   // ══════════════════════════════════════════════════════════════
 
-  Widget _buildCards(PosDashboardModel d, {required int animKey}) {
+  Widget _buildCards(PosDashboardModel d, {required int animKey, bool isNarrow = false}) {
     final os = d.orderSummary;
     final rs = d.revenueSummary;
-    return Row(children: [
-      Expanded(child: _StatCard(
+    final cards = [
+      _StatCard(
         key: ValueKey('pos_c1_$animKey'),
-        icon: Icons.storefront_outlined, color: _ct.primary, label: 'Offline',
+        icon: Icons.storefront_outlined, color: const Color(0xFF2563EB), label: 'Offline',
         value: os.offlineOrders.toDouble(), isCurrency: false,
         line1: 'Hoàn thành: ${_num(os.completedOrders)}',
         line2: 'Đã hủy: ${_num(os.cancelledOrders)}',
-      )),
-      const SizedBox(width: 10),
-      Expanded(child: _StatCard(
+      ),
+      _StatCard(
         key: ValueKey('pos_c2_$animKey'),
         icon: Icons.delivery_dining_outlined, color: const Color(0xFFEE4D2D), label: 'ShopeeFood',
         value: os.shopeeFoodOrders.toDouble(), isCurrency: false,
         line1: 'Tổng đơn: ${_num(os.totalOrders)}',
         line2: 'Chờ xử lý: ${_num(os.pendingOrders)}',
-      )),
-      const SizedBox(width: 10),
-      Expanded(child: _StatCard(
+      ),
+      _StatCard(
         key: ValueKey('pos_c3_$animKey'),
         icon: Icons.two_wheeler_outlined, color: const Color(0xFF00B14F), label: 'GrabFood',
         value: os.grabFoodOrders.toDouble(), isCurrency: false,
         line1: 'Offline: ${_cur(rs.offlineRevenue)}',
         line2: 'Shopee: ${_cur(rs.shopeeFoodRevenue)}',
-      )),
-      const SizedBox(width: 10),
-      Expanded(child: _StatCard(
+      ),
+      _StatCard(
         key: ValueKey('pos_c4_$animKey'),
-        icon: Icons.attach_money_outlined, color: const Color(0xFF16A34A), label: 'Tổng doanh thu',
+        icon: Icons.attach_money_outlined, color: const Color(0xFF16A34A), label: 'Doanh thu',
         value: rs.totalRevenue, isCurrency: true,
         line1: 'Grab: ${_cur(rs.grabFoodRevenue)}',
         line2: 'Tổng: ${_num(os.totalOrders)} đơn',
-      )),
+      ),
+    ];
+
+    if (isNarrow) {
+      // 2×2 grid trên màn hình nhỏ
+      return Column(children: [
+        Row(children: [
+          Expanded(child: cards[0]),
+          const SizedBox(width: 10),
+          Expanded(child: cards[1]),
+        ]),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: cards[2]),
+          const SizedBox(width: 10),
+          Expanded(child: cards[3]),
+        ]),
+      ]);
+    }
+
+    // 4 cột ngang trên tablet/desktop
+    return Row(children: [
+      Expanded(child: cards[0]),
+      const SizedBox(width: 10),
+      Expanded(child: cards[1]),
+      const SizedBox(width: 10),
+      Expanded(child: cards[2]),
+      const SizedBox(width: 10),
+      Expanded(child: cards[3]),
     ]);
   }
 
@@ -328,7 +363,7 @@ class _PosDashboardScreenState extends State<PosDashboardScreen> {
   // RECENT ORDERS TABLE
   // ══════════════════════════════════════════════════════════════
 
-  Widget _buildRecentOrders(PosDashboardModel d) {
+  Widget _buildRecentOrders(PosDashboardModel d, {bool isNarrow = false}) {
     return MyCard(
       borderRadiusAll: 12, paddingAll: 0,
       shadow: MyShadow(elevation: 0.5, position: MyShadowPosition.bottom),
@@ -342,37 +377,46 @@ class _PosDashboardScreenState extends State<PosDashboardScreen> {
           ]),
         ),
         const Divider(height: 0),
-        _orderHeader(),
+        _orderHeader(isNarrow: isNarrow),
         const Divider(height: 0),
         if (d.recentOrders.isEmpty)
           Padding(padding: const EdgeInsets.all(24),
               child: Center(child: MyText.bodyMedium('Không có đơn hàng', muted: true)))
         else
           ...d.recentOrders.map((o) => Column(children: [
-            _orderRow(o),
+            _orderRow(o, isNarrow: isNarrow),
             Divider(height: 0, color: _ct.secondary.withOpacity(0.08)),
           ])),
       ]),
     );
   }
 
-  Widget _orderHeader() {
+  Widget _orderHeader({bool isNarrow = false}) {
     final s = TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _ct.secondary);
     return Container(
       color: _ct.secondary.withOpacity(0.06),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(children: [
-        Expanded(flex: 2, child: Text('Mã đơn',                   style: s)),
-        Expanded(flex: 2, child: Text('Nguồn',                    style: s)),
-        Expanded(flex: 2, child: Text('Thời gian',                style: s)),
-        Expanded(flex: 2, child: Text('Tổng tiền',                style: s)),
-        Expanded(flex: 2, child: Text('Thanh toán',              style: s)),
-        Expanded(flex: 2, child: Text('Trạng thái',               style: s, textAlign: TextAlign.center)),
+      child: isNarrow
+      // Narrow: Mã đơn | Nguồn + Thời gian | Tiền + Trạng thái
+          ? Row(children: [
+        Expanded(flex: 3, child: Text('Mã đơn',   style: s)),
+        Expanded(flex: 3, child: Text('Nguồn',    style: s)),
+        Expanded(flex: 3, child: Text('Tổng tiền', style: s)),
+        Expanded(flex: 2, child: Text('Trạng thái', style: s, textAlign: TextAlign.center)),
+      ])
+      // Wide: 6 cột đầy đủ
+          : Row(children: [
+        Expanded(flex: 2, child: Text('Mã đơn',     style: s)),
+        Expanded(flex: 2, child: Text('Nguồn',      style: s)),
+        Expanded(flex: 2, child: Text('Thời gian',  style: s)),
+        Expanded(flex: 2, child: Text('Tổng tiền',  style: s)),
+        Expanded(flex: 2, child: Text('Thanh toán', style: s)),
+        Expanded(flex: 2, child: Text('Trạng thái', style: s, textAlign: TextAlign.center)),
       ]),
     );
   }
 
-  Widget _orderRow(PosRecentOrderModel o) {
+  Widget _orderRow(PosRecentOrderModel o, {bool isNarrow = false}) {
     final src     = _srcColor(o.orderSource);
     final sc      = _stColor(o.status);
     final pm      = o.paymentMethod;
@@ -381,12 +425,45 @@ class _PosDashboardScreenState extends State<PosDashboardScreen> {
     return Container(
       color: src.withOpacity(0.04),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-      child: Row(children: [
-        // Mã đơn — màu source
+      child: isNarrow
+      // ── Narrow: 4 cột gọn ─────────────────────────────────
+          ? Row(children: [
+        // Mã đơn
+        Expanded(flex: 3, child: Text(o.orderCode,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: src),
+            overflow: TextOverflow.ellipsis)),
+        // Nguồn + thời gian xếp dọc
+        Expanded(flex: 3, child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Icon(_srcIcon(o.orderSource), size: 11, color: src),
+              const SizedBox(width: 3),
+              Flexible(child: Text(_srcLabel(o.orderSource),
+                  style: TextStyle(fontSize: 11, color: src, fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis)),
+            ]),
+            Text(_date(o.createdAt),
+                style: TextStyle(fontSize: 10, color: src.withOpacity(0.65))),
+          ],
+        )),
+        // Tổng tiền + thanh toán xếp dọc
+        Expanded(flex: 3, child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_cur(o.finalAmount),
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: src)),
+            _badge(pmLabel, src),
+          ],
+        )),
+        // Trạng thái
+        Expanded(flex: 2, child: Center(child: _badge(_stLabel(o.status), sc))),
+      ])
+      // ── Wide: 6 cột đầy đủ ────────────────────────────────
+          : Row(children: [
         Expanded(flex: 2, child: Text(o.orderCode,
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: src),
             overflow: TextOverflow.ellipsis)),
-        // Nguồn
         Expanded(flex: 2, child: Row(children: [
           Icon(_srcIcon(o.orderSource), size: 13, color: src),
           const SizedBox(width: 4),
@@ -394,10 +471,8 @@ class _PosDashboardScreenState extends State<PosDashboardScreen> {
               style: TextStyle(fontSize: 11, color: src, fontWeight: FontWeight.w600),
               overflow: TextOverflow.ellipsis)),
         ])),
-        // Thời gian — màu source muted
         Expanded(flex: 2, child: Text(_date(o.createdAt),
             style: TextStyle(fontSize: 11, color: src.withOpacity(0.75)))),
-        // Tổng tiền — màu source
         Expanded(flex: 2, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(_cur(o.finalAmount),
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: src)),
@@ -406,9 +481,7 @@ class _PosDashboardScreenState extends State<PosDashboardScreen> {
                 style: TextStyle(fontSize: 10, color: src.withOpacity(0.55),
                     decoration: TextDecoration.lineThrough)),
         ])),
-        // Phương thức thanh toán — màu theo nguồn
         Expanded(flex: 2, child: _badge(pmLabel, src)),
-        // Trạng thái
         Expanded(flex: 2, child: Center(child: _badge(_stLabel(o.status), sc))),
       ]),
     );
@@ -574,7 +647,7 @@ class _PieCardState extends State<_PieCard> {
         ],
 
         // Payment methods (always shown)
-        // const Divider(height: 18),
+        const Divider(height: 18),
         // Row(children: [
         //   Icon(Icons.payment_outlined, size: 12, color: ct.secondary),
         //   const SizedBox(width: 5),
@@ -582,7 +655,7 @@ class _PieCardState extends State<_PieCard> {
         //       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
         //           color: ct.secondary)),
         // ]),
-        // const SizedBox(height: 7),
+        const SizedBox(height: 7),
         // ...d.paymentBreakdown.methods.asMap().entries.map((e) => Padding(
         //   padding: const EdgeInsets.symmetric(vertical: 3),
         //   child: Row(children: [

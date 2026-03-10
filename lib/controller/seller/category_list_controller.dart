@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:original_taste/helper/utils/mixins/ui_mixins.dart';
@@ -33,93 +32,52 @@ class _CategoryListScreenState extends State<CategoryListScreen> with UIMixin {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return GetBuilder(
       init: controller,
       tag: 'category_list_controller',
       builder: (controller) {
         return Layout(
           screenName: "QUẢN LÝ DANH MỤC",
-          child: Padding(
-            padding: MySpacing.all(20),
-            child: _buildCategoryTable(),
+          child: Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: MySpacing.all(20),
+                  child: _buildCategoryTable(isMobile),
+                ),
+              ),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildCategoryTable() {
+  // ── Card wrapper ───────────────────────────────────────────────────
+
+  Widget _buildCategoryTable(bool isMobile) {
     return MyCard(
       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
       borderRadiusAll: 12,
       paddingAll: 0,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
           _buildTableHeader(),
           const Divider(height: 0),
-          if (controller.isLoading)
-            const Padding(
-              padding: EdgeInsets.all(48),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (controller.errorMessage != null)
-            Padding(
-              padding: MySpacing.all(32),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.error_outline, size: 48, color: contentTheme.danger),
-                    MySpacing.height(12),
-                    MyText.bodyMedium(controller.errorMessage!, color: contentTheme.danger),
-                    MySpacing.height(12),
-                    MyContainer(
-                      onTap: controller.fetchCategories,
-                      color: contentTheme.primary,
-                      paddingAll: 10,
-                      borderRadiusAll: 8,
-                      child: MyText.bodyMedium('Thử lại', color: contentTheme.onPrimary),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else if (controller.categoryList.isEmpty)
-              Padding(
-                padding: MySpacing.all(48),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.category_outlined, size: 64,
-                          color: contentTheme.secondary.withValues(alpha: 0.3)),
-                      MySpacing.height(16),
-                      MyText.bodyLarge('Chưa có danh mục nào', muted: true),
-                      MySpacing.height(12),
-                      MyContainer(
-                        onTap: _goToCreate,
-                        color: contentTheme.primary,
-                        padding: MySpacing.xy(20, 10),
-                        borderRadiusAll: 8,
-                        child: MyText.bodyMedium('Thêm danh mục đầu tiên',
-                            color: contentTheme.onPrimary),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else
-              _buildDataTable(),
+          Expanded(child: _buildBody(isMobile)),
         ],
       ),
     );
   }
 
+  // ── Header ─────────────────────────────────────────────────────────
+
   Widget _buildTableHeader() {
     return Padding(
-      padding: MySpacing.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
           Expanded(
@@ -132,145 +90,271 @@ class _CategoryListScreenState extends State<CategoryListScreen> with UIMixin {
               ),
             ),
           ),
-          MyContainer(
-            onTap: _goToCreate,
-            color: contentTheme.primary,
-            paddingAll: 8,
-            borderRadiusAll: 12,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.add, color: contentTheme.onPrimary, size: 16),
-                MySpacing.width(4),
-                MyText.bodyMedium('Thêm danh mục', color: contentTheme.onPrimary),
-              ],
+          Tooltip(
+            message: 'Thêm danh mục',
+            child: MyContainer(
+              onTap: _goToCreate,
+              color: contentTheme.primary,
+              paddingAll: 9,
+              borderRadiusAll: 10,
+              child: Icon(Icons.add, color: contentTheme.onPrimary, size: 18),
             ),
           ),
-          MySpacing.width(12),
-          MyContainer(
-            onTap: controller.fetchCategories,
-            color: contentTheme.secondary.withValues(alpha: 0.1),
-            paddingAll: 8,
-            borderRadiusAll: 12,
-            child: Icon(Icons.refresh, color: contentTheme.secondary, size: 18),
+          MySpacing.width(6),
+          Tooltip(
+            message: 'Làm mới',
+            child: MyContainer(
+              onTap: controller.fetchCategories,
+              color: contentTheme.secondary.withValues(alpha: 0.1),
+              paddingAll: 9,
+              borderRadiusAll: 10,
+              child: Icon(Icons.refresh, color: contentTheme.secondary, size: 18),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDataTable() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth),
-            child: DataTable(
-              sortAscending: true,
-              headingRowColor: WidgetStatePropertyAll(contentTheme.secondary.withAlpha(4)),
-              dataRowMaxHeight: 80,
-              columnSpacing: 80,
-              showBottomBorder: true,
-              columns: const [
-                DataColumn(label: Text('Tên danh mục')),
-                DataColumn(label: Text('Ngày tạo')),
-                DataColumn(label: Text('Trạng thái')),
-                DataColumn(
-                  label: Text('Thao tác'),
-                  headingRowAlignment: MainAxisAlignment.end,
-                ),
-              ],
-              rows: List.generate(controller.categoryList.length, (index) {
-                final cat = controller.categoryList[index];
-                return DataRow(
-                  cells: [
-                    DataCell(
-                      Row(
-                        children: [
-                          _buildCategoryImage(cat),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(cat.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    DataCell(Text(
-                      cat.createdAt != null ? _formatDate(cat.createdAt!) : '--',
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    )),
-                    DataCell(
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: (cat.isActive ? Colors.green : Colors.red).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          cat.isActive ? 'Hoạt động' : 'Ẩn',
-                          style: TextStyle(
-                            color: cat.isActive ? Colors.green : Colors.red,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      Container(
-                        alignment: Alignment.centerRight,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            InkWell(
-                              onTap: () => _goToEdit(cat),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(Icons.edit, size: 16, color: Colors.blue),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            // InkWell(
-                            //   onTap: () => print("Placeholder image"),
-                            //   child: Container(
-                            //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            //     decoration: BoxDecoration(
-                            //       color: Colors.red.withOpacity(0.1),
-                            //       borderRadius: BorderRadius.circular(8),
-                            //     ),
-                            //     child: const Icon(Icons.delete, size: 16, color: Colors.red),
-                            //   ),
-                            // ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              }),
+  // ── Body states ────────────────────────────────────────────────────
+
+  Widget _buildBody(bool isMobile) {
+    if (controller.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (controller.errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: contentTheme.danger),
+            MySpacing.height(12),
+            MyText.bodyMedium(controller.errorMessage!, color: contentTheme.danger),
+            MySpacing.height(12),
+            MyContainer(
+              onTap: controller.fetchCategories,
+              color: contentTheme.primary,
+              paddingAll: 10,
+              borderRadiusAll: 8,
+              child: MyText.bodyMedium('Thử lại', color: contentTheme.onPrimary),
+            ),
+          ],
+        ),
+      );
+    }
+    if (controller.categoryList.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.category_outlined,
+                size: 64, color: contentTheme.secondary.withValues(alpha: 0.3)),
+            MySpacing.height(16),
+            MyText.bodyLarge('Chưa có danh mục nào', muted: true),
+            MySpacing.height(12),
+            MyContainer(
+              onTap: _goToCreate,
+              color: contentTheme.primary,
+              padding: MySpacing.xy(20, 10),
+              borderRadiusAll: 8,
+              child: MyText.bodyMedium('Thêm danh mục đầu tiên',
+                  color: contentTheme.onPrimary),
+            ),
+          ],
+        ),
+      );
+    }
+    return _buildScrollableTable(isMobile);
+  }
+
+  // ── Scrollable table ───────────────────────────────────────────────
+
+  Widget _buildScrollableTable(bool isMobile) {
+    return Column(
+      children: [
+        // Sticky column header
+        Container(
+          decoration: BoxDecoration(
+            color: contentTheme.secondary.withAlpha(12),
+            border: Border(
+              bottom: BorderSide(color: Colors.grey.shade200, width: 1),
             ),
           ),
-        );
-      },
+          child: Row(
+            children: [
+              _headerCell('Tên danh mục', flex: 5, align: TextAlign.left),
+              if (!isMobile) ...[
+                _headerCell('Ngày tạo', flex: 2, align: TextAlign.center),
+                _headerCell('Trạng thái', flex: 2, align: TextAlign.center),
+              ],
+              _headerCell('Thao tác', flex: 2, align: TextAlign.right),
+            ],
+          ),
+        ),
+
+        // Scrollable rows
+        Expanded(
+          child: ListView.builder(
+            itemCount: controller.categoryList.length,
+            itemBuilder: (context, index) {
+              final cat = controller.categoryList[index];
+              return _buildRow(cat, index % 2 == 0, isMobile);
+            },
+          ),
+        ),
+      ],
     );
   }
 
+  Widget _headerCell(String text,
+      {required int flex, required TextAlign align}) {
+    return Expanded(
+      flex: flex,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Text(
+          text,
+          textAlign: align,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+            color: contentTheme.secondary,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Data row ───────────────────────────────────────────────────────
+
+  Widget _buildRow(CategoryModel cat, bool isEven, bool isMobile) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isEven
+            ? Colors.transparent
+            : contentTheme.secondary.withAlpha(4),
+        border: Border(
+          bottom: BorderSide(color: Colors.grey.shade100, width: 1),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // ── Tên danh mục ──────────────────────────────────────
+          Expanded(
+            flex: 5,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  _buildCategoryImage(cat),
+                  MySpacing.width(12),
+                  Expanded(
+                    child: Text(
+                      cat.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: contentTheme.onBackground,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Ngày tạo (desktop only) ────────────────────────────
+          if (!isMobile)
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Text(
+                  cat.createdAt != null ? _formatDate(cat.createdAt!) : '--',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: contentTheme.onBackground,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+
+          // ── Trạng thái (desktop only) ──────────────────────────
+          if (!isMobile)
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: (cat.isActive ? Colors.green : Colors.red)
+                          .withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      cat.isActive ? 'Hoạt động' : 'Ẩn',
+                      style: TextStyle(
+                        color: cat.isActive ? Colors.green : Colors.red,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // ── Thao tác ──────────────────────────────────────────
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  InkWell(
+                    onTap: () => _goToEdit(cat),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.edit_outlined,
+                          size: 16, color: Colors.blue),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────
+
   Widget _buildCategoryImage(CategoryModel cat) {
-    final url =
-    cat.imageUrl != null ? SellerService.buildImageUrl(cat.imageUrl!) : null;
+    final url = cat.imageUrl != null
+        ? SellerService.buildImageUrl(cat.imageUrl!)
+        : null;
     return MyContainer(
-      height: 56,
-      width: 56,
+      height: 44,
+      width: 44,
       paddingAll: 0,
       borderRadiusAll: 10,
       color: contentTheme.light,
@@ -289,7 +373,8 @@ class _CategoryListScreenState extends State<CategoryListScreen> with UIMixin {
 
   Widget _placeholderIcon() => Center(
     child: Icon(Icons.category_outlined,
-        size: 24, color: contentTheme.secondary.withValues(alpha: 0.5)),
+        size: 22,
+        color: contentTheme.secondary.withValues(alpha: 0.5)),
   );
 
   String _formatDate(int timestamp) {
@@ -299,19 +384,12 @@ class _CategoryListScreenState extends State<CategoryListScreen> with UIMixin {
   }
 
   Future<void> _goToCreate() async {
-    await Get.to(
-          () => const CategoryCreateScreen()
-    )?.then((result) async {
-      await controller.fetchCategories();
-    });
+    await Get.to(() => const CategoryCreateScreen())
+        ?.then((_) async => await controller.fetchCategories());
   }
 
   Future<void> _goToEdit(CategoryModel cat) async {
-    await Get.to(
-          () => const CategoryEditScreen(),
-      arguments: cat,
-    )?.then((result) async {
-      await controller.fetchCategories();
-    });
+    await Get.to(() => const CategoryEditScreen(), arguments: cat)
+        ?.then((_) async => await controller.fetchCategories());
   }
 }

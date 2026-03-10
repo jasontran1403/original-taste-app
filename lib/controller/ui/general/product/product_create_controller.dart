@@ -59,6 +59,9 @@ class ProductCreateController extends GetxController {
   String?              uploadedImageUrl;
   bool                 isUploading        = false;
 
+  // ── Upload error — hiển thị dưới ảnh, block nút Lưu ─────────────
+  String?              uploadError;
+
   List<IngredientModel> ingredientOptions = [];
   IngredientModel?      selectedIngredient;
 
@@ -71,6 +74,9 @@ class ProductCreateController extends GetxController {
 
   bool isSaving        = false;
   bool isLoadingData   = false;
+
+  // Có block nút Lưu không?
+  bool get hasUploadError => uploadError != null;
 
   @override
   void onInit() {
@@ -108,6 +114,9 @@ class ProductCreateController extends GetxController {
         .pickFiles(type: FileType.image, allowMultiple: false);
     if (result != null && result.files.isNotEmpty) {
       files = result.files;
+      // Reset lỗi cũ khi user chọn file mới
+      uploadError = null;
+      uploadedImageUrl = null;
       update();
       await _uploadImage(result.files.first);
     }
@@ -116,34 +125,43 @@ class ProductCreateController extends GetxController {
   Future<void> _uploadImage(PlatformFile file) async {
     if (file.path == null) return;
     isUploading = true;
+    uploadError = null;
     update();
+
     final result = await SellerService.uploadProductImage(file.path!);
+
+    isUploading = false;
+
     if (result.isSuccess && result.data != null) {
       uploadedImageUrl = result.data;
+      uploadError = null;
     } else {
-      Get.snackbar('Lỗi upload', result.message ?? 'Không thể upload',
-          backgroundColor: Colors.red, colorText: Colors.white);
+      // Lấy message lỗi từ server (vd: "Invalid image format. Allowed: [jpg, jpeg, ...]")
+      uploadedImageUrl = null;
+      uploadError = result.message?.isNotEmpty == true
+          ? result.message!
+          : 'Upload thất bại. Vui lòng thử lại.';
     }
-    isUploading = false;
+
     update();
   }
 
   void clearImage() {
     uploadedImageUrl = null;
+    uploadError = null;
     files = [];
     update();
   }
 
   // ── Tiers ────────────────────────────────────────────────────────
   void addTier() {
-    // Auto-fill minQty = maxQty của khung trước (nếu có)
     String autoMin = '0';
     if (tiers.isNotEmpty) {
       final prevMax = tiers.last.maxQtyController.text.trim();
       autoMin = prevMax.isNotEmpty ? prevMax : '';
     }
     tiers.add(TierFormItem(
-      name: 'Khung \${tiers.length + 1}',
+      name: 'Khung ${tiers.length + 1}',
       minQty: autoMin,
     ));
     update();
@@ -192,7 +210,7 @@ class ProductCreateController extends GetxController {
       unit:         'kg',
       imageUrl:     uploadedImageUrl,
       categoryId:   selectedCategory?.id,
-      categoryName: selectedCategory?.name,   // ← gửi tên để backend dùng
+      categoryName: selectedCategory?.name,
       basePrice:    double.parse(basePriceController.text.trim()),
       vatRate:      selectedVatRate,
       tiers:        List.generate(tiers.length, (i) => tiers[i].toJson(i)),
@@ -207,6 +225,7 @@ class ProductCreateController extends GetxController {
     if (result.isSuccess) {
       Get.snackbar('Thành công', 'Đã tạo sản phẩm "${nameController.text}"',
           backgroundColor: Colors.green, colorText: Colors.white);
+      await Future.delayed(const Duration(milliseconds: 1200));
       Get.back(result: true);
     } else {
       Get.snackbar('Lỗi', result.message ?? 'Không thể tạo sản phẩm',

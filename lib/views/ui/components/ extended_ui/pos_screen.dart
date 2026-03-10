@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:get/get.dart';
 import 'package:original_taste/helper/services/auth_services.dart';
 import 'package:original_taste/views/ui/components/%20extended_ui/pos/history_screen.dart';
 import 'package:original_taste/views/ui/components/%20extended_ui/pos/import_history.dart';
@@ -23,7 +22,6 @@ Future<void> main() async {
   if (Platform.isIOS) {
     final deviceInfo = DeviceInfoPlugin();
     final iosInfo = await deviceInfo.iosInfo;
-    print('Device model: ${iosInfo.model}');
   }
 
   runApp(const PosScreen());
@@ -71,13 +69,11 @@ class _MainPageState extends State<MainPage> {
     String? errorText;
     bool hasError = false;
 
-    // Đặt con trỏ về cuối (sau ký tự)
     void placeCursorAtEnd(int index) {
       final ctrl = controllers[index];
       ctrl.selection = TextSelection.collapsed(offset: ctrl.text.length);
     }
 
-    // Focus ô index và đặt con trỏ ở cuối
     void focusAt(int index) {
       focusNodes[index].requestFocus();
       Future.microtask(() => placeCursorAtEnd(index));
@@ -97,7 +93,6 @@ class _MainPageState extends State<MainPage> {
               });
             }
 
-            // Nhập 1 ký tự vào ô index (ghi đè nếu đã có)
             void handleInput(String raw, int index) {
               final ch = raw.replaceAll(RegExp(r'[^0-9]'), '');
               if (ch.isEmpty) return;
@@ -111,22 +106,17 @@ class _MainPageState extends State<MainPage> {
               });
               placeCursorAtEnd(index);
 
-              // Nhảy sang ô tiếp theo
               if (index < 5) focusAt(index + 1);
             }
 
-            // Backspace tại ô index
             void handleBackspace(int index) {
               if (pin[index].isNotEmpty) {
-                // Xóa ô hiện tại
                 setDialogState(() {
                   pin[index]              = '';
                   controllers[index].text = '';
                 });
-                // Nhảy về ô trước (trừ ô đầu)
                 if (index > 0) focusAt(index - 1);
               } else if (index > 0) {
-                // Ô hiện tại rỗng → xóa ô trước, focus về đó
                 setDialogState(() {
                   pin[index - 1]              = '';
                   controllers[index - 1].text = '';
@@ -168,7 +158,6 @@ class _MainPageState extends State<MainPage> {
                         ),
                         const SizedBox(height: 24),
 
-                        // ── 6 ô PIN ────────────────────────────────────
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: List.generate(6, (index) {
@@ -196,7 +185,6 @@ class _MainPageState extends State<MainPage> {
                                     : null),
                               ),
                               alignment: Alignment.center,
-                              // KeyboardListener bắt Backspace khi ô đang rỗng
                               child: KeyboardListener(
                                 focusNode: FocusNode(skipTraversal: true),
                                 onKeyEvent: (event) {
@@ -211,7 +199,7 @@ class _MainPageState extends State<MainPage> {
                                   focusNode: focusNodes[index],
                                   textAlign: TextAlign.center,
                                   keyboardType: TextInputType.number,
-                                  maxLength: 2, // 2 để nhận được ký tự ghi đè
+                                  maxLength: 2,
                                   obscureText: false,
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly,
@@ -226,19 +214,13 @@ class _MainPageState extends State<MainPage> {
                                     border: InputBorder.none,
                                     contentPadding: EdgeInsets.zero,
                                   ),
-
-                                  // Nhập ký tự: ghi đè + nhảy ô tiếp
                                   onChanged: (value) {
                                     if (value.isEmpty) {
-                                      // onChanged rỗng = user xóa bằng bàn phím ảo
                                       handleBackspace(index);
                                     } else {
-                                      // Lấy ký tự MỚI (không phải ký tự cũ)
                                       handleInput(value, index);
                                     }
                                   },
-
-                                  // Click vào ô: đặt con trỏ ở cuối, không select
                                   onTap: () {
                                     Future.microtask(() => placeCursorAtEnd(index));
                                   },
@@ -381,7 +363,7 @@ class _MainPageState extends State<MainPage> {
       backgroundColor: Colors.grey[50],
       body: Row(
         children: [
-          // Sidebar
+          // ── Sidebar ─────────────────────────────────────────
           Container(
             width: navWidth,
             decoration: BoxDecoration(
@@ -394,53 +376,45 @@ class _MainPageState extends State<MainPage> {
                 ),
               ],
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Center(
-                    child: ListView(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      children: List.generate(_pages.length, (index) {
-                        return _navItem(
-                          icon:
-                              [
-                                Icons.home_rounded,
-                                Icons.menu_book_rounded,
-                                Icons.history_rounded,
-                                Icons.local_offer_rounded,
-                                Icons.settings_rounded,
-                              ][index],
-                          label: _pages[index],
-                          index: index,
-                        );
-                      }),
-                    ),
-                  ),
-                ),
-              ],
+            // FIX: dùng ListView trực tiếp thay vì Column > Expanded > Center > ListView(shrinkWrap)
+            // ListView tự scroll khi chiều cao màn hình không đủ (iPhone landscape)
+            // Không dùng shrinkWrap + NeverScrollableScrollPhysics vì sẽ bị clip mất item
+            child: ListView(
+              padding: EdgeInsets.symmetric(vertical: isTablet ? 16 : 8),
+              children: List.generate(_pages.length, (index) {
+                return _navItem(
+                  icon: [
+                    Icons.home_rounded,
+                    Icons.menu_book_rounded,
+                    Icons.history_rounded,
+                    Icons.local_offer_rounded,
+                    Icons.settings_rounded,
+                  ][index],
+                  label: _pages[index],
+                  index: index,
+                );
+              }),
             ),
           ),
 
-          // Nội dung chính
+          // ── Nội dung chính ───────────────────────────────────
           Expanded(
             child: Container(
               margin: EdgeInsets.only(
-                top: isTablet ? 24 : 12,
-                right: isTablet ? 12 : 12,
+                top:    isTablet ? 24 : 12,
+                right:  isTablet ? 12 : 12,
                 bottom: isTablet ? 24 : 12,
-                left: 12,
+                left:   12,
               ),
               padding: EdgeInsets.all(isTablet ? 12 : 8),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color:        Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.12),
+                    color:      Colors.grey.withOpacity(0.12),
                     blurRadius: 16,
-                    offset: const Offset(0, 6),
+                    offset:     const Offset(0, 6),
                   ),
                 ],
               ),
@@ -461,13 +435,11 @@ class _MainPageState extends State<MainPage> {
 
     return GestureDetector(
       onTap: () async {
-        // Nếu click vào tab đang active → không làm gì
         if (isActive) return;
 
-        // Nếu click "Menu" và chưa active → yêu cầu PIN
         if (label == 'Menu') {
           final pin = await _showPinDialog();
-          if (pin == null) return; // Hủy
+          if (pin == null) return;
 
           try {
             final isValid = await PosService.verifyPosMenuPin(pin);
@@ -494,18 +466,16 @@ class _MainPageState extends State<MainPage> {
             }
           }
         } else {
-          // Các tab khác → chuyển bình thường
           setState(() => _selectedIndex = index);
         }
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color:
-              isActive
-                  ? Colors.deepOrange.withOpacity(0.1)
-                  : Colors.transparent,
+          color: isActive
+              ? Colors.deepOrange.withOpacity(0.1)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -520,8 +490,8 @@ class _MainPageState extends State<MainPage> {
             Text(
               label,
               style: TextStyle(
-                color: isActive ? Colors.deepOrange : Colors.grey[700],
-                fontSize: 11,
+                color:      isActive ? Colors.deepOrange : Colors.grey[700],
+                fontSize:   11,
                 fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
               ),
               textAlign: TextAlign.center,
@@ -539,78 +509,66 @@ class _SettingsPage extends StatelessWidget {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder:
-          (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.logout, color: Colors.redAccent, size: 28),
+            SizedBox(width: 12),
+            Text(
+              'Đăng xuất',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
-            title: const Row(
-              children: [
-                Icon(Icons.logout, color: Colors.redAccent, size: 28),
-                SizedBox(width: 12),
-                Text(
-                  'Đăng xuất',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            content: const Text(
-              'Bạn có chắc chắn muốn đăng xuất không?\nCa làm việc hiện tại sẽ không bị ảnh hưởng.',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.black54,
-                height: 1.5,
-              ),
-            ),
-            actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            actions: [
-              // Nút Hủy
-              OutlinedButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 14,
-                  ),
-                  side: const BorderSide(color: Colors.grey),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  'Hủy',
-                  style: TextStyle(fontSize: 16, color: Colors.black54),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Nút Đăng xuất
-              ElevatedButton(
-                onPressed: () async {
-                  Navigator.of(ctx).pop();
-                  await Future.delayed(const Duration(milliseconds: 300));
-
-                  if (context.mounted) {
-                    await AuthService.logout();
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 14,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  'Đăng xuất',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
+          ],
+        ),
+        content: const Text(
+          'Bạn có chắc chắn muốn đăng xuất không?\nCa làm việc hiện tại sẽ không bị ảnh hưởng.',
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.black54,
+            height: 1.5,
           ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              side: const BorderSide(color: Colors.grey),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text(
+              'Hủy',
+              style: TextStyle(fontSize: 16, color: Colors.black54),
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await Future.delayed(const Duration(milliseconds: 300));
+              if (context.mounted) {
+                await AuthService.logout();
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text(
+              'Đăng xuất',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -631,7 +589,6 @@ class _SettingsPage extends StatelessWidget {
           ),
           const SizedBox(height: 32),
 
-          // Card logout
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -639,21 +596,19 @@ class _SettingsPage extends StatelessWidget {
               border: Border.all(color: Colors.grey[200]!),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.08),
+                  color:      Colors.grey.withOpacity(0.08),
                   blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  offset:     const Offset(0, 4),
                 ),
               ],
             ),
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 8,
-              ),
+                  horizontal: 24, vertical: 8),
               leading: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.redAccent.withOpacity(0.1),
+                  color:        Colors.redAccent.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
@@ -665,10 +620,9 @@ class _SettingsPage extends StatelessWidget {
               title: const Text(
                 'Đăng xuất',
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87),
               ),
               subtitle: const Text(
                 'Kết thúc phiên làm việc và quay về màn hình đăng nhập',
@@ -678,8 +632,6 @@ class _SettingsPage extends StatelessWidget {
               onTap: () => _showLogoutDialog(context),
             ),
           ),
-
-          // Có thể thêm các setting khác bên dưới sau này
         ],
       ),
     );

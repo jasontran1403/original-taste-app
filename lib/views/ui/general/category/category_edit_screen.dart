@@ -1,6 +1,4 @@
 // views/ui/general/category/category_edit_screen.dart
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_boxicons/flutter_boxicons.dart';
 import 'package:get/get.dart';
@@ -12,7 +10,6 @@ import 'package:original_taste/helper/widgets/my_card.dart';
 import 'package:original_taste/helper/widgets/my_container.dart';
 import 'package:original_taste/helper/widgets/my_flex.dart';
 import 'package:original_taste/helper/widgets/my_flex_item.dart';
-import 'package:original_taste/helper/widgets/my_list_extension.dart';
 import 'package:original_taste/helper/widgets/my_spacing.dart';
 import 'package:original_taste/helper/widgets/my_text.dart';
 import 'package:original_taste/helper/widgets/my_text_style.dart';
@@ -53,8 +50,8 @@ class _CategoryEditScreenState extends State<CategoryEditScreen>
 
   OutlineInputBorder get outlineInputBorder => OutlineInputBorder(
     borderRadius: BorderRadius.circular(8),
-    borderSide: BorderSide(
-        color: contentTheme.secondary.withValues(alpha: 0.4)),
+    borderSide:
+    BorderSide(color: contentTheme.secondary.withValues(alpha: 0.4)),
   );
 
   @override
@@ -90,6 +87,7 @@ class _CategoryEditScreenState extends State<CategoryEditScreen>
     );
   }
 
+  // ── Image card ────────────────────────────────────────────────────
   Widget _buildImageUpload() {
     return MyCard(
       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
@@ -98,140 +96,265 @@ class _CategoryEditScreenState extends State<CategoryEditScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header
           Padding(
-            padding: MySpacing.all(0),
-            child: Row(
+            padding: MySpacing.all(20),
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                Padding(
-                  padding: MySpacing.all(20),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Nút "← Quay lại" ở bên trái
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child:
-                        MyContainer.bordered(
-                          onTap: () => Get.back(),
-                          color: Colors.transparent,
-                          borderRadiusAll: 10,
-                          padding: MySpacing.xy(12, 8),
-                          borderColor: contentTheme.secondary.withOpacity(0.4),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.arrow_back_rounded, size: 16, color: contentTheme.secondary),
-                              MySpacing.width(6),
-                              MyText.bodyMedium('Quay lại', color: contentTheme.secondary, fontWeight: 600),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: MyText.titleMedium(
-                    'Ảnh danh mục',
-                    style: TextStyle(
-                      fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: MyContainer.bordered(
+                    onTap: () => Get.back(),
+                    color: Colors.transparent,
+                    borderRadiusAll: 10,
+                    padding: MySpacing.xy(12, 8),
+                    borderColor: contentTheme.secondary.withOpacity(0.4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.arrow_back_rounded,
+                            size: 16, color: contentTheme.secondary),
+                        MySpacing.width(6),
+                        MyText.bodyMedium('Quay lại',
+                            color: contentTheme.secondary, fontWeight: 600),
+                      ],
                     ),
                   ),
                 ),
-                if (controller.isUploading) ...[
-                  SizedBox(
-                    height: 16,
-                    width: 16,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: contentTheme.primary),
+                MyText.titleMedium(
+                  'Ảnh danh mục',
+                  style: TextStyle(
+                    fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                   ),
-                  MySpacing.width(8),
-                  MyText.bodySmall('Đang upload...',
-                      color: contentTheme.primary),
-                ],
-                if (controller.uploadedImageUrl != null &&
-                    !controller.isUploading) ...[
-                  MySpacing.width(12),
-                  Icon(Icons.check_circle,
-                      color: contentTheme.success, size: 18),
-                  MySpacing.width(4),
-                  MyText.bodySmall('Đã upload',
-                      color: contentTheme.success),
-                ],
+                ),
+                // Upload status — góc phải
+
               ],
             ),
           ),
           const Divider(height: 0),
+          // Image area + error banner
           Padding(
             padding: MySpacing.all(20),
-            child: _buildImageContent(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildImageContent(),
+                // ── Error banner ──────────────────────────────────
+                if (controller.uploadError != null) ...[
+                  MySpacing.height(10),
+                  Container(
+                    width: double.infinity,
+                    padding: MySpacing.all(12),
+                    decoration: BoxDecoration(
+                      color: contentTheme.danger.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: contentTheme.danger.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.error_outline,
+                            size: 16, color: contentTheme.danger),
+                        MySpacing.width(8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              MyText.bodySmall('Upload thất bại',
+                                  color: contentTheme.danger, fontWeight: 700),
+                              MySpacing.height(2),
+                              MyText.bodySmall(controller.uploadError!,
+                                  color: contentTheme.danger),
+                              MySpacing.height(6),
+                              GestureDetector(
+                                onTap: controller.clearNewImage,
+                                child: MyText.bodySmall(
+                                    'Xóa và chọn lại ảnh',
+                                    color: contentTheme.primary,
+                                    fontWeight: 600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
+  // ── Image content: 3 trạng thái ──────────────────────────────────
+  //
+  //  1. previewBytes != null → ảnh vừa chọn (Image.memory) — giống create
+  //  2. currentImageUrl != null → ảnh hiện tại từ server (Image.network)
+  //  3. empty → upload box
+  //
   Widget _buildImageContent() {
-    if ((controller.currentImageUrl != null ||
-        controller.uploadedImageUrl != null) &&
-        controller.files.isEmpty) {
-      return _buildImagePreview();
+    // Ảnh vừa chọn (kể cả khi đang upload hoặc lỗi)
+    if (controller.previewBytes != null) {
+      return _buildPreview();
     }
-    if (controller.files.isNotEmpty) return _buildFileList();
-    return _buildUploadBox();
+    // Ảnh hiện tại từ server
+    if (controller.currentImageUrl != null) {
+      return _buildExistingImage();
+    }
+    // Chưa có ảnh
+    return _buildDropZoneEmpty();
   }
 
-  Widget _buildImagePreview() {
-    final imageUrl =
-        controller.uploadedImageUrl ?? controller.currentImageUrl;
-    return MyContainer(
+  // Preview ảnh mới chọn — giống CategoryCreateScreen
+  Widget _buildPreview() {
+    return GestureDetector(
       onTap: controller.isUploading ? null : controller.pickFiles,
-      borderRadiusAll: 12,
-      height: 290,
-      width: double.infinity,
-      color: contentTheme.light,
       child: Stack(
-        fit: StackFit.expand,
+        children: [
+          // Ảnh
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.memory(
+              controller.previewBytes!,
+              width: double.infinity,
+              height: 260,
+              fit: BoxFit.cover,
+            ),
+          ),
+
+          // Overlay spinner khi đang upload
+          if (controller.isUploading)
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  color: Colors.black.withOpacity(0.45),
+                  child: const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(
+                          strokeWidth: 3,
+                          valueColor:
+                          AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                        SizedBox(height: 12),
+                        Text('Đang upload...',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Hint "nhấn để đổi ảnh" khi không upload
+          if (!controller.isUploading && controller.uploadError == null)
+            Positioned(
+              bottom: 10, right: 10,
+              child: Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.45),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.edit_rounded, size: 12, color: Colors.white),
+                    SizedBox(width: 4),
+                    Text('Nhấn để đổi ảnh',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ),
+
+          // Nút quay lại ảnh cũ (góc trên phải) — chỉ hiện khi có ảnh cũ và không lỗi
+          if (!controller.isUploading &&
+              controller.uploadError == null &&
+              controller.currentImageUrl != null)
+            Positioned(
+              top: 8, right: 8,
+              child: GestureDetector(
+                onTap: controller.clearNewImage,
+                child: Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.55),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.undo_rounded, size: 12, color: Colors.white),
+                      SizedBox(width: 4),
+                      Text('Dùng ảnh cũ',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Ảnh hiện tại từ server — có overlay "nhấn để thay đổi"
+  Widget _buildExistingImage() {
+    return GestureDetector(
+      onTap: controller.isUploading ? null : controller.pickFiles,
+      child: Stack(
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Image.network(
-              SellerService.buildImageUrl(imageUrl!),
+              SellerService.buildImageUrl(controller.currentImageUrl!),
+              width: double.infinity,
+              height: 260,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => _imagePlaceholder(),
             ),
           ),
           Positioned.fill(
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap:
-                controller.isUploading ? null : controller.pickFiles,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.black.withOpacity(0.3),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.camera_alt,
-                          size: 48,
-                          color: Colors.white.withOpacity(0.9)),
-                      MySpacing.height(8),
-                      Text(
-                        'Nhấn để thay đổi ảnh',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                color: Colors.black.withOpacity(0.3),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.camera_alt,
+                        size: 48, color: Colors.white.withOpacity(0.9)),
+                    MySpacing.height(8),
+                    Text(
+                      'Nhấn để thay đổi ảnh',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -241,105 +364,40 @@ class _CategoryEditScreenState extends State<CategoryEditScreen>
     );
   }
 
-  Widget _buildFileList() {
-    return Column(
-      children: [
-        MyContainer.bordered(
-          onTap: controller.isUploading ? null : controller.pickFiles,
-          borderRadiusAll: 12,
-          width: double.infinity,
-          child: Padding(
-            padding: MySpacing.all(16),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: controller.files
-                  .mapIndexed(
-                    (index, file) => MyContainer.bordered(
-                  borderRadiusAll: 12,
-                  paddingAll: 16,
-                  width: 110,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      MyContainer(
-                        height: 44,
-                        width: 44,
-                        borderRadiusAll: 8,
-                        color: contentTheme.primary
-                            .withValues(alpha: 0.1),
-                        paddingAll: 0,
-                        child: Icon(
-                            controller.getFileIcon(file.name),
-                            size: 20,
-                            color: contentTheme.primary),
-                      ),
-                      MySpacing.height(8),
-                      MyText.bodySmall(file.name,
-                          fontWeight: 700,
-                          muted: true,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-                ),
-              )
-                  .toList(),
-            ),
+  Widget _buildDropZoneEmpty() {
+    return GestureDetector(
+      onTap: controller.pickFiles,
+      child: Container(
+        width: double.infinity,
+        height: 260,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: contentTheme.secondary.withOpacity(0.3),
+            width: 1.5,
           ),
         ),
-        if (controller.currentImageUrl != null ||
-            controller.uploadedImageUrl != null) ...[
-          MySpacing.height(12),
-          MyContainer.bordered(
-            onTap: () {
-              controller.files.clear();
-              controller.update();
-            },
-            borderRadiusAll: 8,
-            padding: MySpacing.xy(16, 8),
-            borderColor: contentTheme.primary,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.arrow_back,
-                    size: 16, color: contentTheme.primary),
-                MySpacing.width(4),
-                MyText.bodySmall('Quay lại ảnh hiện tại',
-                    color: contentTheme.primary),
-              ],
-            ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Boxicons.bx_cloud_upload,
+                  size: 56, color: contentTheme.primary),
+              MySpacing.height(16),
+              Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                alignment: WrapAlignment.center,
+                children: [
+                  MyText.bodyLarge('Kéo thả ảnh vào đây, hoặc'),
+                  MyText.bodyLarge('chọn file', color: contentTheme.primary),
+                ],
+              ),
+              MySpacing.height(8),
+              MyText.bodySmall('Hỗ trợ: PNG, JPG, WEBP, GIF (200×200)',
+                  muted: true),
+            ],
           ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildUploadBox() {
-    return MyContainer.bordered(
-      onTap: controller.isUploading ? null : controller.pickFiles,
-      borderRadiusAll: 12,
-      width: double.infinity,
-      child: Padding(
-        padding: MySpacing.xy(0, 32),
-        child: Column(
-          children: [
-            Icon(Boxicons.bx_cloud_upload,
-                size: 48, color: contentTheme.primary),
-            MySpacing.height(16),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 4,
-              children: [
-                MyText.bodyLarge('Kéo thả ảnh vào đây, hoặc'),
-                MyText.bodyLarge('chọn file',
-                    color: contentTheme.primary),
-              ],
-            ),
-            MySpacing.height(8),
-            MyText.bodySmall('Hỗ trợ: PNG, JPG, WEBP (200×200)',
-                muted: true),
-          ],
         ),
       ),
     );
@@ -351,6 +409,7 @@ class _CategoryEditScreenState extends State<CategoryEditScreen>
         color: contentTheme.secondary.withValues(alpha: 0.3)),
   );
 
+  // ── General info ──────────────────────────────────────────────────
   Widget _buildGeneralInfo() {
     return MyCard(
       shadow: MyShadow(elevation: .5, position: MyShadowPosition.bottom),
@@ -361,18 +420,13 @@ class _CategoryEditScreenState extends State<CategoryEditScreen>
         children: [
           Padding(
             padding: MySpacing.all(20),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                MyText.titleMedium(
-                  'Thông tin category',
-                  style: TextStyle(
-                    fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+            child: MyText.titleMedium(
+              'Thông tin danh mục',
+              style: TextStyle(
+                fontFamily: GoogleFonts.hankenGrotesk().fontFamily,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const Divider(height: 0),
@@ -412,39 +466,58 @@ class _CategoryEditScreenState extends State<CategoryEditScreen>
     );
   }
 
+  // ── Action bar ────────────────────────────────────────────────────
   Widget _buildActions() {
+    final isBlocked = controller.hasUploadError;
+
     return MyContainer(
       paddingAll: 20,
       borderRadiusAll: 12,
       color: contentTheme.light,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          MyContainer.bordered(
-            onTap: () => Get.back(),
-            color: Colors.transparent,
-            borderRadiusAll: 12,
-            padding: MySpacing.xy(24, 10),
-            borderColor: contentTheme.dark,
-            child: MyText.bodyMedium('Hủy'),
-          ),
-          MySpacing.width(12),
-          MyContainer(
-            onTap: _handleSave,
-            color: contentTheme.primary,
-            borderRadiusAll: 12,
-            padding: MySpacing.xy(24, 12),
-            child: controller.isSaving
-                ? SizedBox(
-              height: 18,
-              width: 18,
-              child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: contentTheme.onPrimary),
-            )
-                : MyText.bodyMedium('Lưu thay đổi',
-                fontWeight: 600,
-                color: contentTheme.onPrimary),
+          if (isBlocked) ...[
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              Icon(Icons.image_not_supported_outlined,
+                  size: 14, color: contentTheme.danger),
+              MySpacing.width(6),
+              MyText.bodySmall('Ảnh upload lỗi — vui lòng xóa và chọn lại',
+                  color: contentTheme.danger),
+            ]),
+            MySpacing.height(10),
+          ],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              MyContainer.bordered(
+                onTap: () => Get.back(),
+                color: Colors.transparent,
+                borderRadiusAll: 12,
+                padding: MySpacing.xy(24, 10),
+                borderColor: contentTheme.dark,
+                child: MyText.bodyMedium('Hủy'),
+              ),
+              MySpacing.width(12),
+              Opacity(
+                opacity: isBlocked ? 0.45 : 1.0,
+                child: MyContainer(
+                  onTap: (controller.isSaving || isBlocked) ? null : _handleSave,
+                  color: contentTheme.primary,
+                  borderRadiusAll: 12,
+                  padding: MySpacing.xy(24, 12),
+                  child: controller.isSaving
+                      ? SizedBox(
+                    height: 18, width: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: contentTheme.onPrimary),
+                  )
+                      : MyText.bodyMedium('Lưu thay đổi',
+                      fontWeight: 600, color: contentTheme.onPrimary),
+                ),
+              ),
+            ],
           ),
         ],
       ),

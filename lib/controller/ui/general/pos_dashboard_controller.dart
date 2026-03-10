@@ -2,15 +2,16 @@
 import 'package:get/get.dart';
 import 'package:original_taste/controller/my_controller.dart';
 import 'package:original_taste/helper/services/api_helper.dart';
-import 'package:original_taste/helper/services/dashboard_services.dart';
+
+import '../../../helper/services/pos_dashboard_services.dart';
 
 // ══════════════════════════════════════════════════════════════════
 // ENUMS
 // ══════════════════════════════════════════════════════════════════
 
-enum DashboardMode { pos, wholesale, retail }
+enum PosDashboardMode { pos }
 
-enum DashboardPeriod {
+enum PosDashboardPeriod {
   today('TODAY',   'Hôm nay'),
   days7('7DAYS',   '7 ngày'),
   days30('30DAYS', '30 ngày'),
@@ -19,17 +20,17 @@ enum DashboardPeriod {
 
   final String apiValue;
   final String label;
-  const DashboardPeriod(this.apiValue, this.label);
+  const PosDashboardPeriod(this.apiValue, this.label);
 }
 
 // ══════════════════════════════════════════════════════════════════
 // CONTROLLER
 // ══════════════════════════════════════════════════════════════════
 
-class DashboardController extends MyController {
+class PosDashboardController extends MyController {
   // ── UI State ───────────────────────────────────────────────────
-  DashboardMode   mode   = DashboardMode.pos;
-  DashboardPeriod period = DashboardPeriod.days30;
+  PosDashboardMode   mode   = PosDashboardMode.pos;
+  PosDashboardPeriod period = PosDashboardPeriod.days30;
   DateTime?       customFrom;
   DateTime?       customTo;
 
@@ -39,19 +40,15 @@ class DashboardController extends MyController {
   // ── Reload key ─────────────────────────────────────────────────
   int reloadKey = 0;
 
-  // ── Restaurant data (wholesale / retail) ───────────────────────
-  bool                      isLoading = false;
-  String                    errorMsg  = '';
-  RestaurantDashboardModel? data;
 
   // ── POS data ───────────────────────────────────────────────────
   bool               posIsLoading    = false;
   String             posErrorMsg     = '';
-  PosDashboardModel? posData;
+  PosAdminDashboardModel? posData;
   int                posAnimationKey = 0;
 
   // Cache để phát hiện thay đổi cho POS
-  DashboardPeriod _posLastPeriod     = DashboardPeriod.days30;
+  PosDashboardPeriod _posLastPeriod     = PosDashboardPeriod.days30;
   DateTime?       _posLastCustomFrom;
   DateTime?       _posLastCustomTo;
   int             _posLastReloadKey  = -1;
@@ -73,13 +70,13 @@ class DashboardController extends MyController {
     load();
   }
 
-  void setMode(DashboardMode m) {
+  void setMode(PosDashboardMode m) {
     if (mode == m) return;
     mode = m;
     load();
   }
 
-  void setPeriod(DashboardPeriod p, {DateTime? from, DateTime? to}) {
+  void setPeriod(PosDashboardPeriod p, {DateTime? from, DateTime? to}) {
     period     = p;
     customFrom = from;
     customTo   = to;
@@ -101,7 +98,7 @@ class DashboardController extends MyController {
   // ══════════════════════════════════════════════════════════════
 
   Future<void> load() async {
-    if (mode == DashboardMode.pos) {
+    if (mode == PosDashboardMode.pos) {
       await _loadPos();
     }
   }
@@ -119,11 +116,13 @@ class DashboardController extends MyController {
     update();
 
     try {
-      final result = await DashboardService.getPosDashboard(
+      final result = await PosAdminDashboardService.getPosDashboard(
         period:   period,
         fromDate: customFrom,
         toDate:   customTo,
       );
+
+      print(result);
 
       if (result.isSuccess && result.data != null) {
         posData         = result.data;
@@ -143,7 +142,5 @@ class DashboardController extends MyController {
   // ══════════════════════════════════════════════════════════════
   // CONVENIENT GETTERS
   // ══════════════════════════════════════════════════════════════
-
-  bool get hasData    => data    != null && !isLoading    && errorMsg.isEmpty;
   bool get hasPosData => posData != null && !posIsLoading && posErrorMsg.isEmpty;
 }

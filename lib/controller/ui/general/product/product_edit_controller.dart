@@ -62,13 +62,14 @@ class ProductEditController extends GetxController {
   String? existingImageUrl;
   bool isUploading = false;
 
+  // ── Upload error — hiển thị dưới ảnh, block nút Lưu ─────────────
+  String? uploadError;
+
   List<IngredientModel> ingredientOptions = [];
   IngredientModel? selectedIngredient;
 
-  // Thay prices -> tiers
   List<TierFormItem> tiers = [];
 
-  // VAT: 0, 5, 8, 10
   int selectedVatRate = 0;
   final List<int> vatRateOptions = [0, 5, 8, 10];
 
@@ -76,6 +77,7 @@ class ProductEditController extends GetxController {
   bool isLoadingData = false;
 
   String? get activeImageUrl => uploadedImageUrl ?? existingImageUrl;
+  bool get hasUploadError => uploadError != null;
 
   @override
   void onInit() {
@@ -146,11 +148,15 @@ class ProductEditController extends GetxController {
     update();
   }
 
+  // ── Image ────────────────────────────────────────────────────────
   Future<void> pickFiles() async {
     final result = await FilePicker.platform
         .pickFiles(type: FileType.image, allowMultiple: false);
     if (result != null && result.files.isNotEmpty) {
       files = result.files;
+      // Reset lỗi cũ và ảnh mới khi user chọn lại
+      uploadError = null;
+      uploadedImageUrl = null;
       update();
       await _uploadImage(result.files.first);
     }
@@ -159,27 +165,35 @@ class ProductEditController extends GetxController {
   Future<void> _uploadImage(PlatformFile file) async {
     if (file.path == null) return;
     isUploading = true;
+    uploadError = null;
     update();
+
     final result = await SellerService.uploadProductImage(file.path!);
+
+    isUploading = false;
+
     if (result.isSuccess && result.data != null) {
       uploadedImageUrl = result.data;
+      uploadError = null;
     } else {
-      Get.snackbar('Lỗi upload', result.message ?? 'Không thể upload',
-          backgroundColor: Colors.red, colorText: Colors.white);
+      uploadedImageUrl = null;
+      uploadError = result.message?.isNotEmpty == true
+          ? result.message!
+          : 'Upload thất bại. Vui lòng thử lại.';
     }
-    isUploading = false;
+
     update();
   }
 
   void clearUploadedImage() {
     uploadedImageUrl = null;
+    uploadError = null;
     files = [];
     update();
   }
 
   // ── Tier ops ─────────────────────────────────────────────────────
   void addTier() {
-    // Auto-fill minQty = maxQty của khung trước
     String autoMin = '0';
     if (tiers.isNotEmpty) {
       final prevMax = tiers.last.maxQtyController.text.trim();
@@ -244,7 +258,7 @@ class ProductEditController extends GetxController {
       unit:         'kg',
       imageUrl:     activeImageUrl,
       categoryId:   selectedCategory?.id,
-      categoryName: selectedCategory?.name,   // ← gửi tên để backend dùng
+      categoryName: selectedCategory?.name,
       basePrice:    double.parse(basePriceController.text.trim()),
       vatRate:      selectedVatRate,
       tiers:        tiers.asMap().entries.map((e) => e.value.toJson(e.key)).toList(),

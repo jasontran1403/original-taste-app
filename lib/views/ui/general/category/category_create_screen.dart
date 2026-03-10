@@ -165,9 +165,55 @@ class _CategoryCreateScreenState extends State<CategoryCreateScreen>
           const Divider(height: 0),
           Padding(
             padding: MySpacing.all(20),
-            child: controller.previewBytes != null
-                ? _buildPreview()
-                : _buildDropZoneEmpty(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                controller.previewBytes != null
+                    ? _buildPreview()
+                    : _buildDropZoneEmpty(),
+                if (controller.uploadError != null) ...[
+                  MySpacing.height(10),
+                  Container(
+                    width: double.infinity,
+                    padding: MySpacing.all(12),
+                    decoration: BoxDecoration(
+                      color: contentTheme.danger.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: contentTheme.danger.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.error_outline,
+                            size: 16, color: contentTheme.danger),
+                        MySpacing.width(8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              MyText.bodySmall('Upload thất bại',
+                                  color: contentTheme.danger, fontWeight: 700),
+                              MySpacing.height(2),
+                              MyText.bodySmall(controller.uploadError!,
+                                  color: contentTheme.danger),
+                              MySpacing.height(6),
+                              GestureDetector(
+                                onTap: controller.clearImage,
+                                child: MyText.bodySmall(
+                                    'Xóa và chọn lại ảnh',
+                                    color: contentTheme.primary,
+                                    fontWeight: 600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
       ),
@@ -341,6 +387,26 @@ class _CategoryCreateScreenState extends State<CategoryCreateScreen>
             child: Stack(
               alignment: Alignment.center,
               children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: MyContainer.bordered(
+                    onTap: () => Get.back(),
+                    color: Colors.transparent,
+                    borderRadiusAll: 10,
+                    padding: MySpacing.xy(12, 8),
+                    borderColor: contentTheme.secondary.withOpacity(0.4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.arrow_back_rounded,
+                            size: 16, color: contentTheme.secondary),
+                        MySpacing.width(6),
+                        MyText.bodyMedium('Quay lại',
+                            color: contentTheme.secondary, fontWeight: 600),
+                      ],
+                    ),
+                  ),
+                ),
                 MyText.titleMedium(
                   'Thông tin danh mục',
                   style: TextStyle(
@@ -389,36 +455,56 @@ class _CategoryCreateScreenState extends State<CategoryCreateScreen>
   }
 
   Widget _buildActions() {
+    final isBlocked = controller.hasUploadError;
+
     return MyContainer(
       paddingAll: 20,
       borderRadiusAll: 12,
       color: contentTheme.light,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          MyContainer.bordered(
-            onTap: () => Get.back(),
-            color: Colors.transparent,
-            borderRadiusAll: 12,
-            padding: MySpacing.xy(24, 10),
-            borderColor: contentTheme.dark,
-            child: MyText.bodyMedium('Hủy'),
-          ),
-          MySpacing.width(12),
-          MyContainer(
-            onTap: _handleSave,
-            color: contentTheme.primary,
-            borderRadiusAll: 12,
-            padding: MySpacing.xy(24, 12),
-            child: controller.isSaving
-                ? SizedBox(
-              height: 18,
-              width: 18,
-              child: CircularProgressIndicator(
-                  strokeWidth: 2, color: contentTheme.onPrimary),
-            )
-                : MyText.bodyMedium('Lưu danh mục',
-                fontWeight: 600, color: contentTheme.onPrimary),
+          if (isBlocked) ...[
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              Icon(Icons.image_not_supported_outlined,
+                  size: 14, color: contentTheme.danger),
+              MySpacing.width(6),
+              MyText.bodySmall('Ảnh upload lỗi — vui lòng xóa và chọn lại',
+                  color: contentTheme.danger),
+            ]),
+            MySpacing.height(10),
+          ],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              MyContainer.bordered(
+                onTap: () => Get.back(),
+                color: Colors.transparent,
+                borderRadiusAll: 12,
+                padding: MySpacing.xy(24, 10),
+                borderColor: contentTheme.dark,
+                child: MyText.bodyMedium('Hủy'),
+              ),
+              MySpacing.width(12),
+              Opacity(
+                opacity: isBlocked ? 0.45 : 1.0,
+                child: MyContainer(
+                  onTap: (controller.isSaving || isBlocked) ? null : _handleSave,
+                  color: contentTheme.primary,
+                  borderRadiusAll: 12,
+                  padding: MySpacing.xy(24, 12),
+                  child: controller.isSaving
+                      ? SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: contentTheme.onPrimary),
+                  )
+                      : MyText.bodyMedium('Lưu danh mục',
+                      fontWeight: 600, color: contentTheme.onPrimary),
+                ),
+              ),
+            ],
           ),
         ],
       ),

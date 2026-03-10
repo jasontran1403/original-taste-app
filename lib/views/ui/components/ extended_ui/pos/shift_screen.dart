@@ -52,7 +52,6 @@ class _DenomRowState extends State<_DenomRow> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Mệnh giá - đổi màu khi focus
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
@@ -77,13 +76,12 @@ class _DenomRowState extends State<_DenomRow> {
             ),
           ),
           const SizedBox(width: 12),
-          // Input số lượng
           Expanded(
             child: NumberInput(
               controller: widget.controller,
               label: '',
               width: double.infinity,
-              focusNode: _focusNode, // Gắn FocusNode vào đây
+              focusNode: _focusNode,
             ),
           ),
         ],
@@ -132,7 +130,6 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
   final _noteCtrl = TextEditingController();
   final _transferCtrl = TextEditingController(text: '0');
 
-  // Notifier để trailing tiền cuối ca cập nhật realtime
   final _finalCashNotifier = ValueNotifier<double>(0.0);
 
   bool get _isClosing => widget.currentShift?.isOpen == true;
@@ -144,7 +141,6 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
     _tabController = TabController(length: 1, vsync: this);
     _tabsReady = false;
 
-    // Lắng nghe thay đổi để update tổng cuối ca
     _transferCtrl.addListener(_updateFinalCash);
     for (final ctrl in _closeDenomCtrl.values) {
       ctrl.addListener(_updateFinalCash);
@@ -407,8 +403,8 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Đóng ca thành công'),
+          const SnackBar(
+            content: Text('Đóng ca thành công'),
             backgroundColor: Colors.green,
           ),
         );
@@ -416,7 +412,6 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
     } catch (e) {
       String errorMsg = e.toString();
 
-      // Xử lý lỗi validation cụ thể từ backend
       if (errorMsg.contains('Phải nhập mệnh giá tiền cuối ca')) {
         errorMsg = 'Vui lòng nhập ít nhất một mệnh giá tiền cuối ca.';
       } else if (errorMsg.contains('Phải nhập kho cuối ca')) {
@@ -438,9 +433,18 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
   }
 
   Future<void> _confirmCloseShift() async {
+    // FIX: delay 1 frame để gesture của ElevatedButton hoàn tất trước khi
+    // barrier dialog được mount. Nếu không delay, gesture event "xuyên thủng"
+    // qua barrier và dismiss dialog ngay lập tức.
+    // useRootNavigator: true để dialog mount lên root Navigator — tránh bị
+    // Scaffold hoặc widget cha bắt gesture dismiss.
+    await Future.delayed(const Duration(milliseconds: 80));
+    if (!mounted) return;
+
     final bool? confirmed = await showDialog<bool>(
       context: context,
-      barrierDismissible: false, // ← Quan trọng: không cho dismiss bằng tap ngoài
+      useRootNavigator: true,   // ← mount lên root, thoát khỏi gesture scope của cha
+      barrierDismissible: false,
       builder: (dialogCtx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(children: [
@@ -448,16 +452,17 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
           SizedBox(width: 8),
           Text('Xác nhận đóng ca'),
         ]),
-        content: const Text('Bạn có chắc chắn muốn đóng ca không?\nHành động này không thể hoàn tác.'),
+        content: const Text(
+            'Bạn có chắc chắn muốn đóng ca không?\nHành động này không thể hoàn tác.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            onPressed: () =>
+                Navigator.of(dialogCtx, rootNavigator: true).pop(false),
             child: const Text('Hủy'),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.of(dialogCtx).pop(true); // ← Trả về true
-            },
+            onPressed: () =>
+                Navigator.of(dialogCtx, rootNavigator: true).pop(true),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent,
               foregroundColor: Colors.white,
@@ -469,14 +474,14 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
     );
 
     if (confirmed == true) {
-      // Delay nhỏ để tránh gesture conflict trên iOS release
       await Future.delayed(const Duration(milliseconds: 100));
-      _closeShift();
+      if (mounted) _closeShift();
     }
   }
 
   void _showSnack(String msg, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: color));
   }
 
   String _fmt(double v) => v.toStringAsFixed(0).replaceAllMapped(
@@ -503,23 +508,34 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
             child: _isClosing
                 ? ElevatedButton.icon(
               icon: const Icon(Icons.stop_circle_outlined, size: 20),
-              label: const Text('Đóng ca', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              label: const Text('Đóng ca',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
-              onPressed: _isLoading ? null : _confirmCloseShift,
+              // FIX: không gọi _confirmCloseShift trực tiếp — gesture của button
+              // sẽ dismiss dialog ngay. Delay 80ms để gesture settle xong.
+              onPressed: _isLoading
+                  ? null
+                  : () async {
+                await Future.delayed(const Duration(milliseconds: 80));
+                if (mounted) _confirmCloseShift();
+              },
             )
                 : ElevatedButton.icon(
               icon: const Icon(Icons.play_arrow, size: 20),
-              label: const Text('Mở ca', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              label: const Text('Mở ca',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: _isLoading ? null : _openShift,
             ),
@@ -547,11 +563,15 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
         children: [
           SingleChildScrollView(
             padding: const EdgeInsets.all(16),
-            child: _isClosing ? _buildCloseInfoTab() : _buildOpenInfoTab(),
+            child: _isClosing
+                ? _buildCloseInfoTab()
+                : _buildOpenInfoTab(),
           ),
           SingleChildScrollView(
             padding: const EdgeInsets.all(16),
-            child: _isClosing ? _buildCloseInventoryTab() : _buildOpenInventoryTab(),
+            child: _isClosing
+                ? _buildCloseInventoryTab()
+                : _buildOpenInventoryTab(),
           ),
         ],
       )
@@ -580,15 +600,17 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+            borderSide:
+            BorderSide(color: Theme.of(context).primaryColor, width: 2),
           ),
           prefixIcon: const Icon(Icons.badge_outlined),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           hintStyle: TextStyle(color: Colors.grey.shade500),
         ),
       ),
     ),
-    const SizedBox(height: 8), // Giảm khoảng cách
+    const SizedBox(height: 8),
     _SectionCard(
       title: 'Tiền đầu ca',
       icon: Icons.payments_outlined,
@@ -596,7 +618,10 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
         valueListenable: _DenomNotifier(_openDenomCtrl),
         builder: (_, __, ___) => Text(
           '${_fmt(_calcCash(_openDenomCtrl))}đ',
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 16),
+          style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.green,
+              fontSize: 16),
         ),
       ),
       child: _buildDenomGrid(_openDenomCtrl),
@@ -607,27 +632,37 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
     Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [Colors.deepOrange.shade400, Colors.orange.shade300]),
+        gradient: LinearGradient(
+            colors: [Colors.deepOrange.shade400, Colors.orange.shade300]),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Ca đang mở', style: TextStyle(color: Colors.white70, fontSize: 13)),
+            const Text('Ca đang mở',
+                style: TextStyle(color: Colors.white70, fontSize: 13)),
             Text(widget.currentShift!.staffName,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20)),
             Text(
               'Mở lúc ${DateFormat('HH:mm dd/MM').format(DateTime.fromMillisecondsSinceEpoch(widget.currentShift!.openTime))}',
               style: const TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ]),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            const Text('Đơn hàng', style: TextStyle(color: Colors.white70, fontSize: 13)),
+            const Text('Đơn hàng',
+                style: TextStyle(color: Colors.white70, fontSize: 13)),
             Text('${widget.currentShift!.totalOrders}',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24)),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24)),
             Text('${_fmt(widget.currentShift!.totalRevenue)}đ',
-                style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                style:
+                const TextStyle(color: Colors.white70, fontSize: 12)),
           ]),
         ],
       ),
@@ -637,12 +672,13 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
       icon: Icons.payments_outlined,
       trailing: ValueListenableBuilder<double>(
         valueListenable: _finalCashNotifier,
-        builder: (_, finalCash, ___) {
-          return Text(
-            '${_fmt(finalCash)}đ',
-            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 16),
-          );
-        },
+        builder: (_, finalCash, ___) => Text(
+          '${_fmt(finalCash)}đ',
+          style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.green,
+              fontSize: 16),
+        ),
       ),
       child: Column(
         children: [
@@ -681,9 +717,11 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+            borderSide:
+            BorderSide(color: Theme.of(context).primaryColor, width: 2),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           hintText: 'Nhập ghi chú chi phí (nếu có)...',
           hintStyle: TextStyle(color: Colors.grey.shade500),
         ),
@@ -706,7 +744,8 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
         Expanded(
           child: Text(
             'Ca đầu tiên trong ngày — nhập số lượng nguyên liệu có trong kho.',
-            style: TextStyle(fontSize: 12, color: Colors.orange.shade800, height: 1.4),
+            style: TextStyle(
+                fontSize: 12, color: Colors.orange.shade800, height: 1.4),
           ),
         ),
       ]),
@@ -724,12 +763,14 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
         border: Border.all(color: Colors.blue.shade200),
       ),
       child: Row(children: [
-        Icon(Icons.inventory_2_outlined, color: Colors.blue.shade700, size: 18),
+        Icon(Icons.inventory_2_outlined,
+            color: Colors.blue.shade700, size: 18),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             'Kiểm kho cuối ca — nhập số lượng nguyên liệu còn lại.',
-            style: TextStyle(fontSize: 12, color: Colors.blue.shade800, height: 1.4),
+            style: TextStyle(
+                fontSize: 12, color: Colors.blue.shade800, height: 1.4),
           ),
         ),
       ]),
@@ -744,12 +785,20 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
     if (_ingredients.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(32),
-        child: Center(child: Text('Không có nguyên liệu', style: TextStyle(color: Colors.grey, fontSize: 15))),
+        child: Center(
+            child: Text('Không có nguyên liệu',
+                style: TextStyle(color: Colors.grey, fontSize: 15))),
       );
     }
 
-    final mainList = _ingredients.where((i) => (i['ingredientType'] as String?)?.toUpperCase() != 'SUB').toList();
-    final subList = _ingredients.where((i) => (i['ingredientType'] as String?)?.toUpperCase() == 'SUB').toList();
+    final mainList = _ingredients
+        .where((i) =>
+    (i['ingredientType'] as String?)?.toUpperCase() != 'SUB')
+        .toList();
+    final subList = _ingredients
+        .where(
+            (i) => (i['ingredientType'] as String?)?.toUpperCase() == 'SUB')
+        .toList();
 
     return Column(
       children: [
@@ -762,7 +811,8 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
             packCtrl: packCtrl,
             unitCtrl: unitCtrl,
           ),
-        if (mainList.isNotEmpty && subList.isNotEmpty) const SizedBox(height: 8), // Giảm khoảng cách
+        if (mainList.isNotEmpty && subList.isNotEmpty)
+          const SizedBox(height: 8),
         if (subList.isNotEmpty)
           _IngredientGroupCard(
             title: 'Nguyên liệu Phụ',
@@ -784,7 +834,7 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
         crossAxisCount: 2,
         mainAxisSpacing: 4,
         crossAxisSpacing: 14,
-        childAspectRatio: 13, // Giữ để hàng rộng, height tự co theo nội dung
+        childAspectRatio: 13,
       ),
       itemCount: kDenominations.length,
       itemBuilder: (_, i) {
@@ -798,16 +848,16 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Ô mệnh giá - căn giữa dọc
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.orange.shade50,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.orange.shade200),
                   ),
-                  alignment: Alignment.center,  // Căn giữa text theo chiều dọc
+                  alignment: Alignment.center,
                   child: Text(
                     '${fmt(denom.toDouble())}đ',
                     style: const TextStyle(
@@ -820,7 +870,6 @@ class _ShiftScreenState extends State<ShiftScreen> with TickerProviderStateMixin
                 ),
               ),
               const SizedBox(width: 16),
-              // Ô input - height sẽ bằng mệnh giá nhờ IntrinsicHeight
               Expanded(
                 child: NumberInput(
                   controller: ctrlMap[denom]!,
@@ -860,15 +909,22 @@ class _IngredientGroupCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withOpacity(0.18)),
-        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.07), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.grey.withOpacity(0.07),
+              blurRadius: 8,
+              offset: const Offset(0, 2))
+        ],
       ),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: color.withOpacity(0.07),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Row(
               children: [
@@ -876,13 +932,23 @@ class _IngredientGroupCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   title,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color.withOpacity(0.9)),
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: color.withOpacity(0.9)),
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
-                  child: Text('${ingredients.length}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                      color: color.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(20)),
+                  child: Text('${ingredients.length}',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: color)),
                 ),
               ],
             ),
@@ -894,8 +960,11 @@ class _IngredientGroupCard extends StatelessWidget {
             final imageUrl = ing['imageUrl'] as String?;
 
             return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8), // Giảm vertical padding từ 10 → 8
-              decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.grey.shade100))),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                  border: Border(
+                      top: BorderSide(color: Colors.grey.shade100))),
               child: Row(
                 children: [
                   ClipRRect(
@@ -915,8 +984,12 @@ class _IngredientGroupCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                        Text('1 bịch = $unitPerPack lẻ', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        Text(name,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 13)),
+                        Text('1 bịch = $unitPerPack lẻ',
+                            style: const TextStyle(
+                                fontSize: 11, color: Colors.grey)),
                       ],
                     ),
                   ),
@@ -962,13 +1035,15 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.08), blurRadius: 8)],
+        boxShadow: [
+          BoxShadow(color: Colors.grey.withOpacity(0.08), blurRadius: 8)
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0), // Giảm vertical padding từ 14 → 12
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Row(
               children: [
                 Icon(icon, size: 20, color: Colors.deepOrange),
@@ -977,9 +1052,13 @@ class _SectionCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text(title,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15)),
                       if (subtitle != null)
-                        Text(subtitle!, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        Text(subtitle!,
+                            style: const TextStyle(
+                                fontSize: 11, color: Colors.grey)),
                     ],
                   ),
                 ),
@@ -988,7 +1067,7 @@ class _SectionCard extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(10), // Giảm từ 14 → 10 (giảm khoảng cách nội dung)
+            padding: const EdgeInsets.all(10),
             child: child,
           ),
         ],

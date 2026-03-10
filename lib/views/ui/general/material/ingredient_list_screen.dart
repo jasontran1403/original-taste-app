@@ -89,9 +89,16 @@ class _IngredientListScreenState extends State<IngredientListScreen>
               screenName: "QUẢN LÝ NGUYÊN LIỆU",
               child: Stack(
                 children: [
-                  Padding(
-                    padding: MySpacing.all(20),
-                    child: _buildIngredientTable(),
+                  // Card phải chiếm full height → dùng Column+Expanded
+                  Column(
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: MySpacing.all(20),
+                          child: _buildIngredientTable(),
+                        ),
+                      ),
+                    ],
                   ),
                   if (importCtrl.isScanning) _buildQRScanner(importCtrl),
                 ],
@@ -107,7 +114,7 @@ class _IngredientListScreenState extends State<IngredientListScreen>
 
   Widget _buildTableHeader() {
     return Padding(
-      padding: MySpacing.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
           Expanded(
@@ -120,57 +127,48 @@ class _IngredientListScreenState extends State<IngredientListScreen>
               ),
             ),
           ),
-          MyContainer(
-            onTap: _goToManualImport,
-            color: const Color(0xFF5C6BC0),
-            paddingAll: 8,
-            borderRadiusAll: 12,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.edit_note_rounded, color: Colors.white, size: 16),
-                MySpacing.width(4),
-                MyText.bodyMedium('Nhập thủ công', color: Colors.white, fontWeight: 600),
-              ],
+          Tooltip(
+            message: 'Nhập thủ công',
+            child: MyContainer(
+              onTap: _goToManualImport,
+              color: const Color(0xFF5C6BC0),
+              paddingAll: 9,
+              borderRadiusAll: 10,
+              child: const Icon(Icons.edit_note_rounded, color: Colors.white, size: 18),
             ),
           ),
-          MySpacing.width(8),
-          MyContainer(
-            onTap: () => Get.to(() => const QRImportScreen()),
-            color: const Color(0xFF009688),
-            paddingAll: 8,
-            borderRadiusAll: 12,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 16),
-                MySpacing.width(4),
-                MyText.bodyMedium('Nhập QR', color: Colors.white, fontWeight: 600),
-              ],
+          MySpacing.width(6),
+          Tooltip(
+            message: 'Nhập QR',
+            child: MyContainer(
+              onTap: () => Get.to(() => const QRImportScreen()),
+              color: const Color(0xFF009688),
+              paddingAll: 9,
+              borderRadiusAll: 10,
+              child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 18),
             ),
           ),
-          MySpacing.width(8),
-          MyContainer(
-            onTap: _goToCreate,
-            color: contentTheme.primary,
-            paddingAll: 8,
-            borderRadiusAll: 12,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.add, color: contentTheme.onPrimary, size: 16),
-                MySpacing.width(4),
-                MyText.bodyMedium('Thêm nguyên liệu', color: contentTheme.onPrimary),
-              ],
+          MySpacing.width(6),
+          Tooltip(
+            message: 'Thêm nguyên liệu',
+            child: MyContainer(
+              onTap: _goToCreate,
+              color: contentTheme.primary,
+              paddingAll: 9,
+              borderRadiusAll: 10,
+              child: Icon(Icons.add, color: contentTheme.onPrimary, size: 18),
             ),
           ),
-          MySpacing.width(8),
-          MyContainer(
-            onTap: () => controller.fetchIngredients(refresh: true),
-            color: contentTheme.secondary.withValues(alpha: 0.1),
-            paddingAll: 8,
-            borderRadiusAll: 12,
-            child: Icon(Icons.refresh, color: contentTheme.secondary, size: 18),
+          MySpacing.width(6),
+          Tooltip(
+            message: 'Làm mới',
+            child: MyContainer(
+              onTap: () => controller.fetchIngredients(refresh: true),
+              color: contentTheme.secondary.withValues(alpha: 0.1),
+              paddingAll: 9,
+              borderRadiusAll: 10,
+              child: Icon(Icons.refresh, color: contentTheme.secondary, size: 18),
+            ),
           ),
         ],
       ),
@@ -186,128 +184,121 @@ class _IngredientListScreenState extends State<IngredientListScreen>
       paddingAll: 0,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
+          // ── Header luôn cố định trên cùng ──────────────────────
           _buildTableHeader(),
           const Divider(height: 0),
-          if (controller.isLoading.value && controller.ingredientList.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(48),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (controller.errorMessage.value != null)
-            Padding(
-              padding: MySpacing.all(32),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.error_outline, size: 48, color: contentTheme.danger),
-                    MySpacing.height(12),
-                    MyText.bodyMedium(controller.errorMessage.value!,
-                        color: contentTheme.danger),
-                    MySpacing.height(12),
-                    MyContainer(
-                      onTap: () => controller.fetchIngredients(refresh: true),
-                      color: contentTheme.primary,
-                      paddingAll: 10,
-                      borderRadiusAll: 8,
-                      child: MyText.bodyMedium('Thử lại', color: contentTheme.onPrimary),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else if (controller.ingredientList.isEmpty)
-              Padding(
-                padding: MySpacing.all(48),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.inventory_2_outlined,
-                          size: 64,
-                          color: contentTheme.secondary.withValues(alpha: 0.3)),
-                      MySpacing.height(16),
-                      MyText.bodyLarge('Chưa có nguyên liệu nào', muted: true),
-                      MySpacing.height(12),
-                      MyContainer(
-                        onTap: _goToCreate,
-                        color: contentTheme.primary,
-                        padding: MySpacing.xy(20, 10),
-                        borderRadiusAll: 8,
-                        child: MyText.bodyMedium('Thêm nguyên liệu đầu tiên',
-                            color: contentTheme.onPrimary),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else
-              Expanded(  // ← Thêm Expanded ở đây để bảng chiếm hết không gian còn lại
-                child: _buildDataTableWithPagination(),
-              ),
+
+          // ── Body chiếm toàn bộ không gian còn lại ──────────────
+          Expanded(
+            child: _buildBody(),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildDataTableWithPagination() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildDataTable(),
-        if (controller.isLoading.value && controller.ingredientList.isNotEmpty)
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-        if (!controller.hasMoreData.value)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-            child: MyText.bodySmall(
-              'Đã hiển thị tất cả ${controller.ingredientList.length} nguyên liệu',
-              muted: true,
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildDataTable() {
-    return Expanded(  // ← Thêm Expanded để giới hạn chiều cao
-      child: SingleChildScrollView(
-        controller: _scrollController,
+  Widget _buildBody() {
+    if (controller.isLoading.value && controller.ingredientList.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (controller.errorMessage.value != null) {
+      return Center(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // ── Header row ─────────────────────────────────────────
-            Container(
-              decoration: BoxDecoration(
-                color: contentTheme.secondary.withAlpha(12),
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey.shade200, width: 1),
-                ),
-              ),
-              child: Row(
-                children: [
-                  _headerCell('Tên nguyên liệu', flex: 3, align: TextAlign.left),
-                  _headerCell('Tồn kho', flex: 2, align: TextAlign.center),
-                  _headerCell('Hạn dùng', flex: 2, align: TextAlign.center),
-                  _headerCell('Thao tác', flex: 2, align: TextAlign.right),
-                ],
-              ),
+            Icon(Icons.error_outline, size: 48, color: contentTheme.danger),
+            MySpacing.height(12),
+            MyText.bodyMedium(controller.errorMessage.value!, color: contentTheme.danger),
+            MySpacing.height(12),
+            MyContainer(
+              onTap: () => controller.fetchIngredients(refresh: true),
+              color: contentTheme.primary,
+              paddingAll: 10,
+              borderRadiusAll: 8,
+              child: MyText.bodyMedium('Thử lại', color: contentTheme.onPrimary),
             ),
-
-            // ── Data rows ──────────────────────────────────────────
-            ...controller.ingredientList.asMap().entries.map((entry) {
-              final index = entry.key;
-              final ing = entry.value;
-              final isEven = index % 2 == 0;
-              return _buildRow(ing, isEven);
-            }),
           ],
         ),
-      ),
+      );
+    }
+    if (controller.ingredientList.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.inventory_2_outlined,
+                size: 64, color: contentTheme.secondary.withValues(alpha: 0.3)),
+            MySpacing.height(16),
+            MyText.bodyLarge('Chưa có nguyên liệu nào', muted: true),
+            MySpacing.height(12),
+            MyContainer(
+              onTap: _goToCreate,
+              color: contentTheme.primary,
+              padding: MySpacing.xy(20, 10),
+              borderRadiusAll: 8,
+              child: MyText.bodyMedium('Thêm nguyên liệu đầu tiên',
+                  color: contentTheme.onPrimary),
+            ),
+          ],
+        ),
+      );
+    }
+    return _buildScrollableTable();
+  }
+
+  Widget _buildScrollableTable() {
+    // Tính số item: data rows + optional footer rows
+    final items = controller.ingredientList;
+    final showLoader = controller.isLoading.value && items.isNotEmpty;
+    final showEnd = !controller.hasMoreData.value;
+
+    return Column(
+      children: [
+        // ── Sticky column header ──────────────────────────────────
+        Container(
+          decoration: BoxDecoration(
+            color: contentTheme.secondary.withAlpha(12),
+            border: Border(
+              bottom: BorderSide(color: Colors.grey.shade200, width: 1),
+            ),
+          ),
+          child: Row(
+            children: [
+              _headerCell('Tên nguyên liệu', flex: 5, align: TextAlign.left),
+              _headerCell('Tồn kho', flex: 3, align: TextAlign.center),
+              _headerCell('Thao tác', flex: 2, align: TextAlign.right),
+            ],
+          ),
+        ),
+
+        // ── Scrollable rows ───────────────────────────────────────
+        Expanded(
+          child: ListView.builder(
+            controller: _scrollController,
+            itemCount: items.length + (showLoader ? 1 : 0) + (showEnd ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index < items.length) {
+                return _buildRow(items[index], index % 2 == 0);
+              }
+              if (showLoader) {
+                return const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              // footer "đã hiển thị tất cả"
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                child: MyText.bodySmall(
+                  'Đã hiển thị tất cả ${items.length} nguyên liệu',
+                  muted: true,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -343,7 +334,7 @@ class _IngredientListScreenState extends State<IngredientListScreen>
         children: [
           // ── Tên nguyên liệu ──────────────────────────────────
           Expanded(
-            flex: 3,
+            flex: 5,
             child: InkWell(
               onTap: () => Get.to(
                     () => const InventoryHistoryScreen(),
@@ -354,7 +345,6 @@ class _IngredientListScreenState extends State<IngredientListScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 child: Row(
                   children: [
-                    // Avatar icon
                     Container(
                       width: 36,
                       height: 36,
@@ -370,28 +360,15 @@ class _IngredientListScreenState extends State<IngredientListScreen>
                     ),
                     MySpacing.width(12),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            ing.name,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: contentTheme.onBackground,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                          MySpacing.height(2),
-                          Text(
-                            'ID: ${ing.id}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: contentTheme.secondary.withValues(alpha: 0.7),
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        ing.name,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: contentTheme.onBackground,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                     Icon(
@@ -407,12 +384,12 @@ class _IngredientListScreenState extends State<IngredientListScreen>
 
           // ── Tồn kho ──────────────────────────────────────────
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                   decoration: BoxDecoration(
                     color: _stockColor(ing.stockQuantity).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -421,31 +398,12 @@ class _IngredientListScreenState extends State<IngredientListScreen>
                     '${ing.stockQuantity} ${ing.unit}',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 13,
+                      fontSize: 12,
                       color: _stockColor(ing.stockQuantity),
                     ),
                     textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ),
-            ),
-          ),
-
-          // ── Hạn dùng ─────────────────────────────────────────
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: Center(
-                child: ing.expiryDate != null
-                    ? _buildExpiryBadge(ing.expiryDate!)
-                    : Text(
-                  '--',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: contentTheme.secondary.withValues(alpha: 0.5),
-                  ),
-                  textAlign: TextAlign.center,
                 ),
               ),
             ),
@@ -455,7 +413,7 @@ class _IngredientListScreenState extends State<IngredientListScreen>
           Expanded(
             flex: 2,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -464,12 +422,6 @@ class _IngredientListScreenState extends State<IngredientListScreen>
                     color: contentTheme.primary,
                     onTap: () => _goToEdit(ing),
                   ),
-                  // MySpacing.width(8),
-                  // _actionBtn(
-                  //   icon: Icons.delete_outline_rounded,
-                  //   color: contentTheme.danger,
-                  //   onTap: () => _confirmDelete(ing),
-                  // ),
                 ],
               ),
             ),

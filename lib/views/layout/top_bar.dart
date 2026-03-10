@@ -33,10 +33,12 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
 
   TopBarController controller = Get.put(TopBarController());
 
-  // ---- LOGOUT DIALOG ----
   void _showLogoutDialog() async {
-    final bool? confirmed = await Get.dialog<bool>(
-      Dialog(
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,   // ← quan trọng
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Container(
           width: 360,
@@ -44,58 +46,39 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Icon
               MyContainer.rounded(
                 color: contentTheme.danger.withOpacity(0.12),
                 paddingAll: 16,
                 child: Icon(Boxicons.bx_log_out, size: 32, color: contentTheme.danger),
               ),
               MySpacing.height(16),
-
-              // Title
-              MyText.titleMedium(
-                "Xác nhận đăng xuất",
-                fontWeight: 700,
-                textAlign: TextAlign.center,
-              ),
+              MyText.titleMedium('Xác nhận đăng xuất',
+                  fontWeight: 700, textAlign: TextAlign.center),
               MySpacing.height(8),
-
-              // Message
-              MyText.bodyMedium(
-                "Bạn có chắc chắn muốn đăng xuất không?",
-                muted: true,
-                textAlign: TextAlign.center,
-              ),
+              MyText.bodyMedium('Bạn có chắc chắn muốn đăng xuất không?',
+                  muted: true, textAlign: TextAlign.center),
               MySpacing.height(24),
-
-              // Buttons
               IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Cancel
                     Expanded(
                       child: MyButton.outlined(
-                        onPressed: () => Get.back(result: false),
+                        onPressed: () => Navigator.of(ctx, rootNavigator: true).pop(false),
                         borderColor: theme.colorScheme.outline.withOpacity(0.4),
                         padding: MySpacing.xy(0, 12),
-                        child: MyText.labelLarge("Hủy", fontWeight: 600),
+                        child: MyText.labelLarge('Hủy', fontWeight: 600),
                       ),
                     ),
                     MySpacing.width(12),
-
-                    // Confirm logout
                     Expanded(
                       child: MyButton(
-                        onPressed: () => Get.back(result: true),
+                        onPressed: () => Navigator.of(ctx, rootNavigator: true).pop(true),
                         backgroundColor: contentTheme.danger,
                         padding: MySpacing.xy(0, 12),
                         elevation: 0,
-                        child: MyText.labelLarge(
-                          "Đăng xuất",
-                          fontWeight: 600,
-                          color: contentTheme.onDanger,
-                        ),
+                        child: MyText.labelLarge('Đăng xuất',
+                            fontWeight: 600, color: contentTheme.onDanger),
                       ),
                     ),
                   ],
@@ -105,11 +88,9 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
           ),
         ),
       ),
-      barrierDismissible: false, // ← Quan trọng: không cho tap ngoài dismiss
     );
 
     if (confirmed == true) {
-      // Delay nhỏ để tránh gesture conflict trên iOS release
       await Future.delayed(const Duration(milliseconds: 120));
       AuthService.logout();
     }
@@ -128,68 +109,84 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
           color: topBarTheme.background,
           child: Row(
             children: [
-              Spacer(),
-              MySpacing.width(12),
+              // Spacer đẩy icons về bên phải
+              const Spacer(),
+
+              // ── Dark mode toggle ──────────────────────────────
+              MouseRegion(
+                onEnter: (_) => setState(() => controller.isHovered = true),
+                onExit:  (_) => setState(() => controller.isHovered = false),
+                child: InkWell(
+                  onTap: () {
+                    ThemeCustomizer.setTheme(
+                      ThemeCustomizer.instance.theme == ThemeMode.dark
+                          ? ThemeMode.light
+                          : ThemeMode.dark,
+                    );
+                    ThemeCustomizer.notify();
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: SvgPicture.asset(
+                      'assets/svg/moon.svg',
+                      width: 22,
+                      height: 22,
+                      colorFilter: ColorFilter.mode(
+                        controller.isHovered
+                            ? contentTheme.primary
+                            : contentTheme.secondary,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              MySpacing.width(4),
+
+              // ── Notification bell ─────────────────────────────
               MouseRegion(
                 onEnter: (_) => setState(() => controller.isHoveredNotification = true),
-                onExit: (_) => setState(() => controller.isHoveredNotification = false),
+                onExit:  (_) => setState(() => controller.isHoveredNotification = false),
                 child: CustomPopupMenu(
                   backdrop: true,
                   onChange: (_) {},
-                  offsetX: -300,
+                  offsetX: -260,
                   menu: Padding(
-                    padding: MySpacing.all(8),
-                    child: Center(
-                      child: SvgPicture.asset(
-                        'assets/svg/bell_bing_bold.svg',
-                        width: 22,
-                        height: 22,
-                        colorFilter: ColorFilter.mode(
-                          controller.isHoveredNotification ? contentTheme.primary : contentTheme.secondary,
-                          BlendMode.srcIn,
-                        ),
+                    padding: const EdgeInsets.all(8),
+                    child: SvgPicture.asset(
+                      'assets/svg/bell_bing_bold.svg',
+                      width: 22,
+                      height: 22,
+                      colorFilter: ColorFilter.mode(
+                        controller.isHoveredNotification
+                            ? contentTheme.primary
+                            : contentTheme.secondary,
+                        BlendMode.srcIn,
                       ),
                     ),
                   ),
                   menuBuilder: (_) => buildNotification(controller.notifications),
                 ),
               ),
-              MySpacing.width(12),
+              MySpacing.width(8),
+
+              // ── User avatar / account menu ────────────────────
               CustomPopupMenu(
                 backdrop: true,
-                hideFn: (hideFn) => languageHideFn = hideFn,
+                hideFn: (fn) => languageHideFn = fn,
                 onChange: (_) {},
-                offsetX: -40,
+                offsetX: -110,
                 offsetY: 16,
-                menu: MyContainer.rounded(paddingAll: 0, height: 32, width: 32, child: Image.asset(Images.userAvatars[1])),
+                menu: MyContainer.rounded(
+                  paddingAll: 0,
+                  height: 32,
+                  width: 32,
+                  child: Image.asset(Images.userAvatars[1]),
+                ),
                 menuBuilder: (_) => buildAccountMenu(),
               ),
               MySpacing.width(20),
-              SizedBox(
-                width: Get.width * 0.12,
-                child: TextFormField(
-                  maxLines: 1,
-                  style: MyTextStyle.bodyMedium(),
-                  decoration: InputDecoration(
-                    hintText: "Search...",
-                    hintStyle: MyTextStyle.labelMedium(muted: true),
-                    border: OutlineInputBorder(borderSide: BorderSide.none, borderRadius: BorderRadius.circular(4)),
-                    enabledBorder: OutlineInputBorder(borderSide: BorderSide.none, borderRadius: BorderRadius.circular(4)),
-                    focusedBorder: OutlineInputBorder(borderSide: BorderSide.none, borderRadius: BorderRadius.circular(4)),
-                    disabledBorder: OutlineInputBorder(borderSide: BorderSide.none, borderRadius: BorderRadius.circular(4)),
-                    errorBorder: OutlineInputBorder(borderSide: BorderSide.none, borderRadius: BorderRadius.circular(4)),
-                    focusedErrorBorder: OutlineInputBorder(borderSide: BorderSide.none, borderRadius: BorderRadius.circular(4)),
-                    filled: true,
-                    fillColor: contentTheme.secondary.withValues(alpha: 0.2),
-                    suffixIcon: Icon(RemixIcons.search_line, size: 16),
-                    prefixIconConstraints: BoxConstraints(minWidth: 36, maxWidth: 36, minHeight: 32, maxHeight: 32),
-                    contentPadding: MySpacing.xy(16, 15),
-                    isCollapsed: true,
-                    floatingLabelBehavior: FloatingLabelBehavior.never,
-                  ),
-                ),
-              ),
-              MySpacing.width(25),
             ],
           ),
         );
@@ -197,6 +194,9 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
     );
   }
 
+  // =====================================================================
+  // NOTIFICATION PANEL
+  // =====================================================================
   Widget buildNotification(List<Map<String, dynamic>> notifications) {
     return MyContainer.bordered(
       paddingAll: 0,
@@ -212,9 +212,7 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
               children: [
                 MyText.titleMedium("Notifications", fontWeight: 700, muted: true),
                 MyButton.text(
-                  onPressed: () {
-                    notifications.clear();
-                  },
+                  onPressed: () => notifications.clear(),
                   padding: MySpacing.zero,
                   splashColor: contentTheme.secondary.withAlpha(28),
                   msPadding: const WidgetStatePropertyAll(EdgeInsets.zero),
@@ -226,51 +224,54 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
           const Divider(height: 0),
           SizedBox(
             height: 270,
-            child:
-            notifications.isEmpty
-                ? Center(child: MyText.bodyMedium("No new notifications", muted: true, fontWeight: 500))
+            child: notifications.isEmpty
+                ? Center(
+              child: MyText.bodyMedium(
+                "No new notifications",
+                muted: true,
+                fontWeight: 500,
+              ),
+            )
                 : ListView.separated(
               padding: EdgeInsets.zero,
               itemCount: notifications.length,
               itemBuilder: (context, index) {
                 final item = notifications[index];
-
                 return MyButton(
                   onPressed: () {},
                   elevation: 0,
                   borderRadiusAll: 0,
                   padding: MySpacing.xy(12, 14),
-                  backgroundColor: theme.colorScheme.surface.withValues(alpha: 0.03),
-                  splashColor: theme.colorScheme.onSurface.withValues(alpha: 0.08),
+                  backgroundColor:
+                  theme.colorScheme.surface.withValues(alpha: 0.03),
+                  splashColor:
+                  theme.colorScheme.onSurface.withValues(alpha: 0.08),
                   child: Padding(
                     padding: MySpacing.all(8.0),
-                    child: Row(
-                      children: [
-                        _buildLeading(item),
-                        MySpacing.width(12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (item['name'] != null) MyText.bodyMedium(item['name'], fontWeight: 600),
-                              MyText.bodySmall(
-                                item['message'] ?? '',
-                                fontWeight: 500,
-                                muted: true,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
+                    child: Row(children: [
+                      _buildLeading(item),
+                      MySpacing.width(12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (item['name'] != null)
+                              MyText.bodyMedium(item['name'], fontWeight: 600),
+                            MyText.bodySmall(
+                              item['message'] ?? '',
+                              fontWeight: 500,
+                              muted: true,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ]),
                   ),
                 );
               },
-              separatorBuilder: (BuildContext context, int index) {
-                return Divider();
-              },
+              separatorBuilder: (_, __) => const Divider(),
             ),
           ),
           const Divider(height: 0),
@@ -282,7 +283,12 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
               msBackgroundColor: WidgetStatePropertyAll(contentTheme.primary),
               borderRadiusAll: 8,
               elevation: 0,
-              child: MyText.labelMedium("View All Notification", fontWeight: 600, xMuted: true, color: contentTheme.onPrimary),
+              child: MyText.labelMedium(
+                "View All Notification",
+                fontWeight: 600,
+                xMuted: true,
+                color: contentTheme.onPrimary,
+              ),
             ),
           ),
         ],
@@ -293,37 +299,33 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
   Widget _buildLeading(Map<String, dynamic> item) {
     if (item.containsKey('avatar')) {
       return MyContainer.rounded(
-        height: 36,
-        width: 36,
-        paddingAll: 0,
+        height: 36, width: 36, paddingAll: 0,
         clipBehavior: Clip.antiAlias,
         child: Image.asset(item['avatar'], fit: BoxFit.cover),
       );
     } else if (item.containsKey('initial')) {
       return MyContainer.rounded(
-        height: 36,
-        width: 36,
+        height: 36, width: 36,
         color: (item['color'] as Color?)?.withValues(alpha: 0.2) ?? Colors.grey.shade200,
-        child: Center(child: Text(item['initial'], style: TextStyle(fontWeight: FontWeight.bold, color: item['color'] ?? Colors.black))),
+        child: Center(child: Text(item['initial'],
+            style: TextStyle(fontWeight: FontWeight.bold, color: item['color'] ?? Colors.black))),
       );
     } else if (item.containsKey('icon')) {
       return MyContainer.rounded(
-        height: 36,
-        width: 36,
-        paddingAll: 0,
+        height: 36, width: 36, paddingAll: 0,
         color: (item['color'] as Color?)?.withValues(alpha: 0.2) ?? Colors.grey.shade100,
         child: Icon(item['icon'], size: 18, color: item['color'] ?? Colors.grey),
       );
     }
-
     return MyContainer.rounded(
-      height: 36,
-      width: 36,
-      color: Colors.grey.shade300,
+      height: 36, width: 36, color: Colors.grey.shade300,
       child: const Icon(Icons.notifications_none, size: 18, color: Colors.black54),
     );
   }
 
+  // =====================================================================
+  // ACCOUNT MENU
+  // =====================================================================
   Widget buildAccountMenu() {
     return MyContainer(
       borderRadiusAll: 8,
@@ -332,7 +334,10 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(padding: MySpacing.nBottom(12), child: MyText.labelMedium("Welcome!", fontWeight: 700, muted: true)),
+          Padding(
+            padding: MySpacing.nBottom(12),
+            child: MyText.labelMedium("Welcome!", fontWeight: 700, muted: true),
+          ),
           MySpacing.height(12),
           MyButton(
             onPressed: () {
@@ -344,32 +349,34 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
             padding: MySpacing.all(12),
             splashColor: theme.colorScheme.onSurface.withAlpha(20),
             backgroundColor: Colors.transparent,
-            child: Row(
-              children: [
-                Icon(Boxicons.bx_user_circle, size: 16, color: contentTheme.onBackground),
-                MySpacing.width(8),
-                MyText.labelMedium("Profile", fontWeight: 700, muted: true),
-              ],
-            ),
+            child: Row(children: [
+              Icon(Boxicons.bx_user_circle, size: 16, color: contentTheme.onBackground),
+              MySpacing.width(8),
+              MyText.labelMedium("Profile", fontWeight: 700, muted: true),
+            ]),
           ),
-          Divider(),
+          const Divider(),
           MyButton(
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             onPressed: () {
+              // Đóng dropdown trước — backdrop của CustomPopupMenu sẽ dismiss
+              // bất kỳ thứ gì mở cùng lúc, kể cả dialog.
+              // Delay 250ms để dropdown animation xong hẳn rồi mới show dialog.
               languageHideFn?.call();
-              _showLogoutDialog();
+              Future.delayed(const Duration(milliseconds: 250), () {
+                if (mounted) _showLogoutDialog();
+              });
             },
             borderRadiusAll: 0,
             padding: MySpacing.all(12),
             splashColor: theme.colorScheme.error.withAlpha(28),
             backgroundColor: Colors.transparent,
-            child: Row(
-              children: [
-                Icon(Boxicons.bx_log_out, size: 16, color: contentTheme.danger),
-                MySpacing.width(8),
-                MyText.labelMedium("Log out", fontWeight: 700, muted: true, color: contentTheme.danger),
-              ],
-            ),
+            child: Row(children: [
+              Icon(Boxicons.bx_log_out, size: 16, color: contentTheme.danger),
+              MySpacing.width(8),
+              MyText.labelMedium("Log out", fontWeight: 700, muted: true,
+                  color: contentTheme.danger),
+            ]),
           ),
           MySpacing.height(12),
         ],
@@ -379,39 +386,25 @@ class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin, UI
 
   Color getIconColor(String colorKey) {
     switch (colorKey) {
-      case "text-primary":
-        return Colors.blue;
-      case "text-warning":
-        return Colors.orange;
-      case "text-danger":
-        return Colors.red;
-      case "text-pink":
-        return Colors.pink;
-      case "text-purple":
-        return Colors.purple;
-      case "text-success":
-        return Colors.green;
-      default:
-        return Colors.grey;
+      case "text-primary":   return Colors.blue;
+      case "text-warning":   return Colors.orange;
+      case "text-danger":    return Colors.red;
+      case "text-pink":      return Colors.pink;
+      case "text-purple":    return Colors.purple;
+      case "text-success":   return Colors.green;
+      default:               return Colors.grey;
     }
   }
 
   Color getBackgroundColor(String bgKey) {
     switch (bgKey) {
-      case "bg-primary-subtle":
-        return Colors.blue.shade50;
-      case "bg-warning-subtle":
-        return Colors.orange.shade50;
-      case "bg-danger-subtle":
-        return Colors.red.shade50;
-      case "bg-pink-subtle":
-        return Colors.pink.shade50;
-      case "bg-purple-subtle":
-        return Colors.purple.shade50;
-      case "bg-success-subtle":
-        return Colors.green.shade50;
-      default:
-        return Colors.grey.shade50;
+      case "bg-primary-subtle": return Colors.blue.shade50;
+      case "bg-warning-subtle": return Colors.orange.shade50;
+      case "bg-danger-subtle":  return Colors.red.shade50;
+      case "bg-pink-subtle":    return Colors.pink.shade50;
+      case "bg-purple-subtle":  return Colors.purple.shade50;
+      case "bg-success-subtle": return Colors.green.shade50;
+      default:                  return Colors.grey.shade50;
     }
   }
 }
