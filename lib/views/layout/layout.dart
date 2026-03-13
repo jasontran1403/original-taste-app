@@ -15,10 +15,8 @@ import 'package:original_taste/helper/widgets/my_responsiv.dart';
 import 'package:original_taste/helper/widgets/my_spacing.dart';
 import 'package:original_taste/helper/theme/app_theme.dart';
 import 'package:original_taste/helper/widgets/my_text.dart';
-import 'package:original_taste/helper/widgets/responsive.dart';
 import 'package:original_taste/images.dart';
 import 'package:original_taste/views/layout/left_bar.dart';
-import 'package:original_taste/views/layout/right_bar.dart';
 import 'package:original_taste/views/layout/top_bar.dart';
 import 'package:original_taste/widgets/custom_pop_menu.dart';
 
@@ -213,7 +211,6 @@ class _LayoutState extends State<Layout> {
           ],
         ),
         drawer: LeftBar(),
-        endDrawer: RightBar(),
         body: Stack(
           children: [
             _ContentArea(child: widget.child),

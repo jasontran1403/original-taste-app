@@ -211,21 +211,24 @@ class _IngredientEditScreenState extends State<IngredientEditScreen>
       children: [
         MyText.bodyMedium('Đơn vị *'),
         MySpacing.height(8),
-        InputDecorator(
+        DropdownButtonFormField<String>(
+          value: kIngredientUnits.contains(_selectedUnit) ? _selectedUnit : kIngredientUnits.first,
+          dropdownColor: Colors.white,  // ← thêm dòng này
           decoration: InputDecoration(
             border: _outlineInputBorder,
             focusedBorder: _outlineInputBorder,
             enabledBorder: _outlineInputBorder,
             contentPadding: MySpacing.all(14),
             isDense: true,
-            isCollapsed: true,
-            filled: true,
-            fillColor: Colors.grey.shade100, // nền xám nhạt để trông "disabled"
           ),
-          child: Text(
-            'kg',  // Cố định đơn vị là kg
-            style: MyTextStyle.bodyMedium(),
-          ),
+          items: kIngredientUnits
+              .map((u) => DropdownMenuItem(value: u, child: Text(u, style: MyTextStyle.bodyMedium())))
+              .toList(),
+          onChanged: (v) {
+            if (v == null) return;
+            setState(() => _selectedUnit = v);
+            controller.unitController.text = v;
+          },
         ),
       ],
     );

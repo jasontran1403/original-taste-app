@@ -63,18 +63,37 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen>
   // ── Top bar: toggle + period + refresh ───────────────────────
 
   Widget _buildTopBar(SuperAdminDashboardController c) {
+    final width = MediaQuery.sizeOf(context).width;
+    final isMobile = width < 600; // breakpoint cho mobile
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(  // Dùng Column trên mobile
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildModeToggle(c),
-          const SizedBox(width: 12),
-          // Dropdown xe — chỉ hiện khi mode = POS
-          if (c.mode == SuperAdminDashboardMode.pos) ...[
-            _PosVehicleDropdown(c: c),
-            const SizedBox(width: 12),
-          ],
-          Expanded(child: _buildPeriodFilter(c)),
+          // Dòng 1: toggle + dropdown (nếu POS)
+          Wrap(
+            spacing: 12,
+            children: [
+              _buildModeToggle(c),
+              if (c.mode == SuperAdminDashboardMode.pos) _PosVehicleDropdown(c: c),
+            ],
+          ),
+          MySpacing.height(isMobile ? 12 : 0),
+          // Dòng 2: filter
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ...SuperAdminDashboardPeriod.values
+                    .where((p) => p != SuperAdminDashboardPeriod.custom)
+                    .map((p) => _periodChip(c, p)),
+                _customChip(c),
+              ],
+            ),
+          ),
         ],
       ),
     );

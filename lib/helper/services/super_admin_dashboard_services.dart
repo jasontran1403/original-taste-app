@@ -631,6 +631,7 @@ class PosVehicle {
   final String? avatarUrl;
   final String? address;
   final String? phone;
+  final int?    storeId;    // ← thêm
 
   const PosVehicle({
     required this.id,
@@ -638,6 +639,7 @@ class PosVehicle {
     this.avatarUrl,
     this.address,
     this.phone,
+    this.storeId,           // ← thêm
   });
 
   factory PosVehicle.fromJson(Map<String, dynamic> j) => PosVehicle(

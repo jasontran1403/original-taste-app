@@ -17,9 +17,8 @@ import 'package:original_taste/views/layout/layout.dart';
 import '../../../../controller/seller/ingredient_create_controller.dart';
 
 // Danh sách đơn vị dùng chung cho Create & Edit
-const kIngredientUnits = [
-  'Kg', 'g', 'lít', 'ml', 'cái', 'hộp', 'túi', 'gói', 'chai', 'lon', 'thùng', 'bó',
-];
+const kIngredientUnits = ['Kg', 'Chai', 'Cái'];
+
 
 class IngredientCreateScreen extends StatefulWidget {
   const IngredientCreateScreen({super.key});
@@ -194,21 +193,24 @@ class _IngredientCreateScreenState extends State<IngredientCreateScreen>
       children: [
         MyText.bodyMedium('Đơn vị *'),
         MySpacing.height(8),
-        InputDecorator(
+        DropdownButtonFormField<String>(
+          value: _selectedUnit,
+          dropdownColor: Colors.white,  // ← thêm dòng này
           decoration: InputDecoration(
             border: _outlineInputBorder,
             focusedBorder: _outlineInputBorder,
             enabledBorder: _outlineInputBorder,
             contentPadding: MySpacing.all(14),
             isDense: true,
-            isCollapsed: true,
-            filled: true,
-            fillColor: Colors.grey.shade100, // nền xám nhạt để trông "disabled"
           ),
-          child: Text(
-            'kg',  // Cố định đơn vị là kg
-            style: MyTextStyle.bodyMedium(),
-          ),
+          items: kIngredientUnits
+              .map((u) => DropdownMenuItem(value: u, child: Text(u, style: MyTextStyle.bodyMedium())))
+              .toList(),
+          onChanged: (v) {
+            if (v == null) return;
+            setState(() => _selectedUnit = v);
+            controller.unitController.text = v;
+          },
         ),
       ],
     );

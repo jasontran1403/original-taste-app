@@ -17,7 +17,6 @@ import 'package:original_taste/views/layout/layout.dart';
 
 import '../../../../controller/seller/ingredient_list_controller.dart';
 import '../../../../helper/services/seller_services.dart';
-import '../../../../models/import_warehouse_model.dart';
 import '../inventory/import_warehouse_controller.dart';
 import '../inventory/inventory_history_screen.dart';
 import '../inventory/qr_import_screen.dart';
